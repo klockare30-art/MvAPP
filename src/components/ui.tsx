@@ -143,6 +143,8 @@ export function SelectTile({
   minHeight = touch.large,
   style,
   badge,
+  solid,
+  labelSize,
 }: {
   label: string;
   sublabel?: string | null;
@@ -153,9 +155,14 @@ export function SelectTile({
   minHeight?: number;
   style?: StyleProp<ViewStyle>;
   badge?: string | number | null;
+  /** Fill the whole tile with the accent colour when selected (no check icon) — readable at a distance. */
+  solid?: boolean;
+  labelSize?: number;
 }) {
   const strong = accent === 'blue' ? colors.accentBlue : colors.accentGreen;
   const soft = accent === 'blue' ? colors.accentBlueSoft : colors.accentGreenSoft;
+  const selectedBg = solid ? strong : soft;
+  const selectedFg = solid && accent === 'green' ? '#04210F' : colors.text;
   return (
     <Pressable
       accessibilityRole="button"
@@ -171,14 +178,19 @@ export function SelectTile({
         {
           minHeight,
           borderColor: selected ? strong : colors.border,
-          backgroundColor: selected ? soft : pressed ? colors.surfacePressed : colors.surface,
+          backgroundColor: selected ? selectedBg : pressed ? colors.surfacePressed : colors.surface,
           opacity: disabled && !selected ? 0.45 : 1,
         },
         style,
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={[styles.tileLabel, selected && { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
+        <Text
+          style={[styles.tileLabel, labelSize ? { fontSize: labelSize } : null, selected && { color: selectedFg }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
           {label}
         </Text>
         {sublabel ? (
@@ -188,11 +200,11 @@ export function SelectTile({
         ) : null}
       </View>
       {badge != null ? (
-        <View style={[styles.badge, selected && { backgroundColor: strong }]}>
+        <View style={[styles.badge, selected && { backgroundColor: solid ? 'rgba(0,0,0,0.25)' : strong }]}>
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       ) : null}
-      {selected ? <Ionicons name="checkmark-circle" size={28} color={strong} /> : null}
+      {selected && !solid ? <Ionicons name="checkmark-circle" size={28} color={strong} /> : null}
     </Pressable>
   );
 }

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView } from 'expo-camera';
 import { useKeepAwake } from 'expo-keep-awake';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -23,7 +23,7 @@ import { formatDuration, formatMinutes, formatTime } from '@/utils/time';
 import { canStart, elapsedMs, isSelectionLocked, type RecordingState } from './recordingMachine';
 import { useRecorder } from './useRecorder';
 
-const CONTROL_STRIP_MIN = 196;
+const CONTROL_STRIP_MIN = 226;
 /** Grace period after re-activating the camera (onCameraReady does not fire again). */
 const CAMERA_WARMUP_MS = 1200;
 
@@ -189,6 +189,20 @@ export function RecordingWorkspace({ session, onExit }: { session: TrainingSessi
               <Text style={[typography.body, { color: colors.textSecondary }]}>{cameraError}</Text>
             </View>
           ) : null}
+          {!busy && (state.lastSavedVideoId || recent?.length) ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Visa senaste klipp"
+              onPress={() => {
+                tapFeedback();
+                void openLatest();
+              }}
+              style={({ pressed }) => [styles.latestButton, pressed && { backgroundColor: colors.surfacePressed }]}
+            >
+              <Ionicons name="play-circle" size={34} color={colors.text} />
+              <Text style={[typography.button, { color: colors.text }]}>VISA SENASTE KLIPP</Text>
+            </Pressable>
+          ) : null}
           <View style={styles.topRight}>
             {level !== 'ok' && storage ? (
               <View style={[styles.pill, { backgroundColor: level === 'critical' ? colors.recordRed : colors.warning }]}>
@@ -220,79 +234,93 @@ export function RecordingWorkspace({ session, onExit }: { session: TrainingSessi
 
       {/* ---------------- Control strip ---------------- */}
       <View style={styles.strip}>
-        <View style={{ flex: 1, gap: spacing.sm }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
-            <Text style={styles.rowLabel}>MÅLVAKT</Text>
-            {session.participants.map((g) => (
-              <SelectTile
-                key={g.id}
-                label={goaltenderShortLabel(g).toUpperCase()}
-                selected={g.id === goalieId}
-                accent="blue"
-                minHeight={76}
-                style={styles.tile}
-                badge={counts?.get(g.id) ?? 0}
-                disabled={locked && g.id !== goalieId}
-                onPress={() => (locked ? lockedAlert() : setGoalieId(g.id))}
-              />
-            ))}
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
-            <Text style={styles.rowLabel}>FOKUS</Text>
-            {session.focusAreas.map((f) => (
-              <SelectTile
-                key={f.id}
-                label={f.name.toUpperCase()}
-                selected={f.id === focusId}
-                accent="green"
-                minHeight={76}
-                style={styles.tile}
-                disabled={locked && f.id !== focusId}
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <View style={styles.stripRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>MÅLVAKT</Text>
+              <TileRow count={session.participants.length}>
+                {session.participants.map((g) => (
+                  <SelectTile
+                    key={g.id}
+                    label={goaltenderShortLabel(g)}
+                    selected={g.id === goalieId}
+                    accent="blue"
+                    solid
+                    labelSize={18}
+                    minHeight={72}
+                    style={styles.tile}
+                    badge={counts?.get(g.id) ?? 0}
+                    disabled={locked && g.id !== goalieId}
+                    onPress={() => (locked ? lockedAlert() : setGoalieId(g.id))}
+                  />
+                ))}
+              </TileRow>
+            </View>
+            <View style={{ width: 184 }}>
+              <Text style={styles.rowLabel}>ÖVNING</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Välj övning, nu ${exercise ? exercise.name : 'ingen'}`}
                 onPress={() => {
+                  tapFeedback();
                   if (locked) return lockedAlert();
-                  if (f.id !== focusId) {
-                    setFocusId(f.id);
-                    setExerciseId(null);
-                  }
+                  if (!focusId) return;
+                  setShowExercises(true);
                 }}
-              />
-            ))}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Välj övning"
-              onPress={() => {
-                tapFeedback();
-                if (locked) return lockedAlert();
-                if (!focusId) return;
-                setShowExercises(true);
-              }}
-              style={[styles.exerciseButton, exercise && { borderColor: colors.accentGreen }, (locked || !focusId) && { opacity: 0.45 }]}
-            >
-              <Text style={styles.exerciseLabel}>ÖVNING</Text>
-              <Text style={[typography.bodyStrong, { color: exercise ? colors.text : colors.textMuted }]} numberOfLines={1}>
-                {exercise ? exercise.name : 'Ingen (valfri)'}
-              </Text>
-            </Pressable>
-          </ScrollView>
-        </View>
-
-        <View style={styles.sideButtons}>
-          <Button
-            title="VISA SENASTE KLIPP"
-            icon="play-circle"
-            variant="secondary"
-            onPress={openLatest}
-            disabled={busy || !(state.lastSavedVideoId || recent?.length)}
-            style={{ minWidth: 220 }}
-          />
-          <Button
-            title={`SENASTE (${recent?.length ?? 0})`}
-            icon="list"
-            variant="ghost"
-            size="compact"
-            onPress={() => setShowRecent(true)}
-            disabled={busy || !recent?.length}
-          />
+                style={[styles.exerciseButton, exercise && { borderColor: colors.accentGreen, borderStyle: 'solid' }, (locked || !focusId) && { opacity: 0.45 }]}
+              >
+                <Text style={[typography.bodyStrong, { color: exercise ? colors.text : colors.textMuted, flex: 1 }]} numberOfLines={1}>
+                  {exercise ? exercise.name : 'Ingen (valfri)'}
+                </Text>
+                <Ionicons name="chevron-down" size={22} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <View>
+              <Text style={styles.rowLabel}>KLIPP</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Senaste klipp, ${recent?.length ?? 0} st`}
+                disabled={busy || !recent?.length}
+                onPress={() => {
+                  tapFeedback();
+                  setShowRecent(true);
+                }}
+                style={({ pressed }) => [
+                  styles.recentButton,
+                  pressed && { backgroundColor: colors.surfacePressed },
+                  (busy || !recent?.length) && { opacity: 0.4 },
+                ]}
+              >
+                <Ionicons name="list" size={24} color={colors.text} />
+                <Text style={[typography.caption, { color: colors.textSecondary, fontWeight: '700' }]}>{recent?.length ?? 0}</Text>
+              </Pressable>
+            </View>
+          </View>
+          <View>
+            <Text style={styles.rowLabel}>FOKUSOMRÅDE</Text>
+            <TileRow count={session.focusAreas.length}>
+              {session.focusAreas.map((f) => (
+                <SelectTile
+                  key={f.id}
+                  label={f.name}
+                  selected={f.id === focusId}
+                  accent="green"
+                  solid
+                  labelSize={17}
+                  minHeight={72}
+                  style={styles.tile}
+                  disabled={locked && f.id !== focusId}
+                  onPress={() => {
+                    if (locked) return lockedAlert();
+                    if (f.id !== focusId) {
+                      setFocusId(f.id);
+                      setExerciseId(null);
+                    }
+                  }}
+                />
+              ))}
+            </TileRow>
+          </View>
         </View>
 
         <RecordButton state={state} disabled={!canRecord} onPress={onRecordPress} />
@@ -346,6 +374,18 @@ export function RecordingWorkspace({ session, onExit }: { session: TrainingSessi
         </View>
       ) : null}
     </View>
+  );
+}
+
+/** Up to this many tiles share the row width; beyond that the row scrolls sideways. */
+const MAX_TILES_WITHOUT_SCROLL = 6;
+
+function TileRow({ count, children }: { count: number; children: ReactNode }) {
+  if (count <= MAX_TILES_WITHOUT_SCROLL) return <View style={styles.tileFill}>{children}</View>;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.tileFill}>
+      {children}
+    </ScrollView>
   );
 }
 
@@ -666,13 +706,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  tileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.md },
-  rowLabel: { ...typography.label, color: colors.textMuted, width: 92 },
-  tile: { minWidth: 168 },
+  stripRow: { flexDirection: 'row', gap: spacing.sm },
+  tileFill: { flexGrow: 1, flexDirection: 'row', gap: spacing.sm },
+  rowLabel: { ...typography.label, fontSize: 11, letterSpacing: 1, color: colors.textMuted, marginBottom: 3 },
+  // flex: tiles share the row; minWidth keeps them tappable with gloves when the row scrolls.
+  tile: { flex: 1, minWidth: 120, paddingHorizontal: spacing.sm },
   exerciseButton: {
-    minWidth: 180,
-    minHeight: 76,
-    justifyContent: 'center',
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
     borderWidth: 2.5,
@@ -680,8 +723,28 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
   },
-  exerciseLabel: { ...typography.label, fontSize: 12, color: colors.textMuted },
-  sideButtons: { gap: spacing.sm, alignItems: 'stretch' },
+  latestButton: {
+    position: 'absolute',
+    left: spacing.md,
+    bottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: touch.regular,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.overlayStrong,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+  },
+  recentButton: {
+    width: 64,
+    minHeight: 72,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   recordButton: {
     width: 176,
     height: 168,

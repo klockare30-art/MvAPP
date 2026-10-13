@@ -105,12 +105,19 @@ export async function markUsed(db: SqlExecutor, focusAreaId: Id | null, exercise
   }
 }
 
-/** Default Swedish goaltending focus areas, seeded on first launch. */
-export const DEFAULT_FOCUS_AREAS: { name: string; exercises: string[] }[] = [
-  { name: 'Förflyttningar', exercises: ['T-push', 'C-cut', 'Shuffle'] },
-  { name: 'Butterfly', exercises: ['Butterfly-slide', 'Recovery'] },
-  { name: 'Stolpspel', exercises: ['RVH', 'VH'] },
-  { name: 'Returkontroll', exercises: [] },
-  { name: 'Positionering', exercises: [] },
-  { name: 'Skridskoåkning', exercises: [] },
+/**
+ * Default Swedish goaltending focus areas. `since` is the seed version that
+ * introduced the entry: on upgrade only entries newer than the stored version
+ * are added, so defaults the coach has renamed or removed never come back.
+ */
+export const DEFAULT_FOCUS_AREAS: { name: string; exercises: string[]; since: number }[] = [
+  { name: 'Förflyttningar', exercises: ['T-push', 'C-cut', 'Shuffle'], since: 1 },
+  { name: 'Butterfly', exercises: ['Butterfly-slide', 'Recovery'], since: 1 },
+  { name: 'Stolpspel', exercises: ['RVH', 'VH'], since: 1 },
+  { name: 'Returkontroll', exercises: [], since: 1 },
+  { name: 'Positionering', exercises: [], since: 1 },
+  { name: 'Skridskoåkning', exercises: [], since: 1 },
+  { name: 'Scanning', exercises: [], since: 2 },
 ];
+
+export const FOCUS_AREA_SEED_VERSION = Math.max(...DEFAULT_FOCUS_AREAS.map((f) => f.since));

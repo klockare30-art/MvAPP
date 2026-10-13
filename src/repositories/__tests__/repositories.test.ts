@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { bootstrapDatabase } from '@/db/bootstrap';
 import { createDemoData } from '@/db/demoData';
 import { runMigrations } from '@/db/migrations';
 import { newId } from '@/utils/id';
@@ -17,6 +18,7 @@ import {
   setActiveSelection,
   updateSession,
 } from '../sessions';
+import { setSetting } from '../settings';
 import { createTeam, listTeamGoaltenders } from '../teams';
 import {
   countVideosByFocusArea,
@@ -74,7 +76,24 @@ describe('migrations', () => {
   test('seed default focus areas with exercises', async () => {
     const { db } = await openBootstrappedDatabase();
     const areas = await listFocusAreas(db);
-    expect(areas.map((a) => a.name)).toEqual(expect.arrayContaining(['Förflyttningar', 'Stolpspel', 'Butterfly']));
+    expect(areas.map((a) => a.name)).toEqual(
+      expect.arrayContaining(['Förflyttningar', 'Stolpspel', 'Butterfly', 'Scanning']),
+    );
+  });
+
+  test('upgrade from seed v1 adds only new defaults (deleted v1 defaults stay deleted)', async () => {
+    const { db } = await openBootstrappedDatabase();
+    // Simulate a v1 install: legacy flag, no Scanning, coach removed Positionering.
+    await db.run("DELETE FROM app_settings WHERE key = 'focusAreaSeedVersion'");
+    await setSetting(db, 'seededFocusAreas', true);
+    await db.run("DELETE FROM focus_areas WHERE name IN ('Scanning', 'Positionering')");
+    await bootstrapDatabase(db);
+    const names = (await listFocusAreas(db)).map((a) => a.name);
+    expect(names).toContain('Scanning');
+    expect(names).not.toContain('Positionering');
+    // Running again is a no-op.
+    await bootstrapDatabase(db);
+    expect((await listFocusAreas(db)).filter((a) => a.name === 'Scanning')).toHaveLength(1);
   });
 });
 

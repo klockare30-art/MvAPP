@@ -31,7 +31,7 @@ export async function createDemoData(db: SqlDatabase, trainerId: Id): Promise<Id
     goalieIds.push(g.id);
   }
   const focusIds: Id[] = [];
-  for (const name of ['Förflyttningar', 'Butterfly', 'Stolpspel', 'Returkontroll']) {
+  for (const name of ['Förflyttningar', 'Butterfly', 'Stolpspel', 'Returkontroll', 'Scanning']) {
     focusIds.push((await findOrCreateFocusArea(db, name, trainerId)).id);
   }
   return createSession(db, {
