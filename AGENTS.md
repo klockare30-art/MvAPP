@@ -39,3 +39,14 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## GoalieVision project notes
+
+- Product spec and status: see `README.md` (Swedish). UI text is Swedish.
+- Target device: iPad 9th gen (A13, 64 GB, 1080p rear camera, no LiDAR/Pencil). Landscape only.
+- The developer uses Windows: iOS builds go through EAS; never assume a Mac.
+- Offline-first: no network calls in core flows. Videos only leave the device when explicitly published (future phase).
+- Never simulate camera recording or video editing with UI-only/mock media in production code.
+- Data access: repositories in `src/repositories/` take an `SqlExecutor`; inside `db.transaction(tx => ...)` always use `tx`, never `db` (the serialized wrapper would deadlock).
+- Store video *file names* only (resolve with `src/services/videoFiles.ts`), never absolute paths.
+- Run `npm test`, `npm run typecheck` and `npm run lint` before declaring work done. Tests need Node >= 22.5 (`node:sqlite`).
