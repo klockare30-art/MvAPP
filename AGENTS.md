@@ -45,7 +45,9 @@ Docs: https://docs.expo.dev/eas/index.md
 - Product spec and status: see `README.md` (Swedish). UI text is Swedish.
 - Target device: iPad 9th gen (A13, 64 GB, 1080p rear camera, no LiDAR/Pencil). Landscape only.
 - The developer uses Windows: iOS builds go through EAS; never assume a Mac.
-- Offline-first: no network calls in core flows. Videos only leave the device when explicitly published (future phase).
+- Offline-first: no network calls in core flows. Videos only leave the device when the coach explicitly publishes them to the goaltender portal (`docs/PORTAL.md`).
+- Portal security lives in `supabase/migrations` (RLS); every policy change needs a test in `supabase/tests/rls_test.sql` (`npm run test:db`).
+- `portal/` is a separate Vite app with its own package.json; it is excluded from the app's tsconfig/jest/eslint.
 - Never simulate camera recording or video editing with UI-only/mock media in production code.
 - Data access: repositories in `src/repositories/` take an `SqlExecutor`; inside `db.transaction(tx => ...)` always use `tx`, never `db` (the serialized wrapper would deadlock).
 - Store video *file names* only (resolve with `src/services/videoFiles.ts`), never absolute paths.

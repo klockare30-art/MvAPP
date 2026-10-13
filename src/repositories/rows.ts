@@ -36,6 +36,7 @@ export interface GoaltenderRow {
   email: string | null;
   photo_uri: string | null;
   user_account_id: string | null;
+  publish_consent_at: string | null;
   created_at: string;
 }
 
@@ -48,6 +49,7 @@ export function mapGoaltender(r: GoaltenderRow): Goaltender {
     email: r.email,
     photoUri: r.photo_uri,
     userAccountId: r.user_account_id,
+    publishConsentAt: r.publish_consent_at ?? null,
     createdAt: r.created_at,
   };
 }

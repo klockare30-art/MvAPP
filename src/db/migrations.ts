@@ -217,6 +217,16 @@ CREATE TABLE app_settings (
 );
 `,
   },
+  {
+    version: 2,
+    name: 'portal_publication',
+    sql: `
+-- When the coach confirmed consent (goaltender/guardian) for publishing to the portal.
+ALTER TABLE goaltenders ADD COLUMN publish_consent_at TEXT;
+ALTER TABLE video_recordings ADD COLUMN published_at TEXT;
+ALTER TABLE video_recordings ADD COLUMN publish_error TEXT;
+`,
+  },
 ];
 
 export async function runMigrations(db: SqlDatabase): Promise<number> {

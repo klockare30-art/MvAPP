@@ -129,7 +129,7 @@ describe('useRecorder pipeline', () => {
     expect(williamVideos).toHaveLength(1);
     expect(erikVideos[0]?.focusAreaId).toBe(forfl.id);
     expect(williamVideos[0]?.focusAreaId).toBe(forfl.id);
-    expect(erikVideos[0]?.codec).toBe('hvc1');
+    expect(erikVideos[0]?.codec).toBe('avc1');
     expect(rec.current.state.lastSavedVideoId).toBe(williamVideos[0]?.id);
     expect(videoFiles.persistCameraFile).toHaveBeenCalledTimes(2);
   });

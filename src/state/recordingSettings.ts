@@ -10,12 +10,13 @@ export interface RecordingSettings {
 
 /**
  * 1080p is the highest quality supported by the iPad 9th gen rear camera and
- * the default. HEVC roughly halves file size compared with H.264 and is
- * hardware-encoded on A10+ chips.
+ * the default. H.264 is the default codec because published videos are played
+ * in the goaltenders' web browsers, where H.264 is universally supported while
+ * HEVC depends on browser and hardware. HEVC (≈ 1/3 smaller) stays selectable.
  */
 export const DEFAULT_RECORDING_SETTINGS: RecordingSettings = {
   quality: '1080p',
-  codec: 'hevc',
+  codec: 'h264',
   recordAudio: true,
 };
 

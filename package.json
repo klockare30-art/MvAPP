@@ -4,6 +4,7 @@
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@supabase/supabase-js": "^2.117.3",
     "expo": "~57.0.28",
     "expo-camera": "~57.0.6",
     "expo-constants": "~57.0.21",
@@ -24,7 +25,8 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-screens": "~4.26.0"
+    "react-native-screens": "~4.26.0",
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -48,7 +50,10 @@
     "lint": "expo lint",
     "doctor": "expo-doctor",
     "build:ios:dev": "eas build --profile development --platform ios",
-    "build:ios:preview": "eas build --profile preview --platform ios"
+    "build:ios:preview": "eas build --profile preview --platform ios",
+    "test:db": "bash scripts/test-db.sh",
+    "portal:dev": "npm --prefix portal run dev",
+    "portal:build": "npm --prefix portal run build"
   },
   "private": true,
   "jest": {
@@ -59,7 +64,8 @@
       "^expo-crypto$": "<rootDir>/test/shims/expoCrypto.ts"
     },
     "testPathIgnorePatterns": [
-      "/node_modules/"
+      "/node_modules/",
+      "<rootDir>/portal/"
     ],
     "setupFiles": []
   }

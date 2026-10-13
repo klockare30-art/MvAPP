@@ -37,6 +37,8 @@ export interface Goaltender {
   photoUri: string | null;
   /** Future: linked portal account (Phase 4). */
   userAccountId: string | null;
+  /** When the coach confirmed consent (goaltender/guardian) to publish videos to the portal. */
+  publishConsentAt: string | null;
   createdAt: string;
 }
 
@@ -125,6 +127,10 @@ export interface VideoRecording {
   publicationStatus: PublicationStatus;
   /** True when the file was recovered after an unexpected app termination. */
   recovered: boolean;
+  /** Portal storage path once published. */
+  remoteId: string | null;
+  publishedAt: string | null;
+  publishError: string | null;
   note: string | null;
   createdAt: string;
   updatedAt: string;

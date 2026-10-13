@@ -5,6 +5,7 @@ import { Alert, Switch, Text, View } from 'react-native';
 
 import { Banner, Button, Card, Chip, Field, Row, Screen, SectionTitle, Stat } from '@/components/ui';
 import { createDemoData } from '@/db/demoData';
+import { PortalSettingsCard } from '@/features/portal/PortalSettingsCard';
 import { updateTrainer } from '@/repositories/settings';
 import { listAllVideoFileNames, videoStorageStats } from '@/repositories/videos';
 import {
@@ -112,13 +113,19 @@ export default function SettingsScreen() {
           {(['hevc', 'h264'] as VideoCodecSetting[]).map((c) => (
             <Chip
               key={c}
-              label={c === 'hevc' ? 'HEVC (mindre filer)' : 'H.264 (bäst kompatibilitet)'}
+              label={c === 'hevc' ? 'HEVC (mindre filer)' : 'H.264 (spelas i alla webbläsare)'}
               accent="blue"
               selected={recordingSettings.codec === c}
               onPress={() => set({ codec: c })}
             />
           ))}
         </Row>
+
+        <Text style={styles.hint}>
+          {recordingSettings.codec === 'hevc'
+            ? 'HEVC tar ungefär en tredjedel mindre plats men kan inte spelas i alla webbläsare. Välj H.264 om videorna ska publiceras till målvaktsportalen.'
+            : 'H.264 rekommenderas när videor publiceras till målvaktsportalen: det spelas i alla vanliga webbläsare och mobiler.'}
+        </Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.md, gap: spacing.md }}>
           <View style={{ flex: 1 }}>
@@ -169,6 +176,9 @@ export default function SettingsScreen() {
         ) : null}
       </Card>
 
+      <SectionTitle>Målvaktsportal</SectionTitle>
+      <PortalSettingsCard />
+
       <SectionTitle>Tränare</SectionTitle>
       <Card>
         <Row>
@@ -199,8 +209,8 @@ export default function SettingsScreen() {
       <SectionTitle>Om appen</SectionTitle>
       <Card>
         <Text style={[typography.body, { color: colors.textSecondary }]}>
-          GoalieVision {Constants.expoConfig?.version ?? ''} · Allt fungerar offline. Videor lagras endast lokalt på
-          iPaden; ingenting laddas upp.
+          GoalieVision {Constants.expoConfig?.version ?? ''} · Inspelning och granskning fungerar helt offline. Videor
+          lämnar iPaden endast när du publicerar dem till en målvakt.
         </Text>
       </Card>
     </Screen>

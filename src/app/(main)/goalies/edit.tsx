@@ -1,14 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Switch, Text, View } from 'react-native';
 
-import { Button, ErrorText, Field, Loading, Row, Screen, SectionTitle, SelectTile } from '@/components/ui';
+import { Button, Card, ErrorText, Field, Loading, Row, Screen, SectionTitle, SelectTile } from '@/components/ui';
 import type { Goaltender, Id, Team } from '@/domain/types';
 import { archiveGoaltender, createGoaltender, getGoaltender, listGoaltenderTeams, updateGoaltender } from '@/repositories/goaltenders';
 import { listTeams } from '@/repositories/teams';
+import { PortalEraseButton } from '@/features/portal/PortalEraseButton';
 import { useApp } from '@/state/AppProvider';
 import { notifyDataChanged } from '@/state/dataEvents';
 import { useDbQuery } from '@/state/useDbQuery';
+import { colors, spacing, typography } from '@/theme';
+import { formatDate } from '@/utils/time';
 
 export default function EditGoalieScreen() {
   const { id, teamId } = useLocalSearchParams<{ id?: string; teamId?: string }>();
@@ -41,6 +44,7 @@ function GoalieForm({
   const [lastName, setLastName] = useState(g?.lastName ?? '');
   const [jersey, setJersey] = useState(g?.jerseyNumber != null ? String(g.jerseyNumber) : '');
   const [email, setEmail] = useState(g?.email ?? '');
+  const [consent, setConsent] = useState(!!g?.publishConsentAt);
   const [teamIds, setTeamIds] = useState<Id[]>(
     g ? data.goalieTeams.map((t) => t.id) : defaultTeamId ? [defaultTeamId] : [],
   );
@@ -55,7 +59,7 @@ function GoalieForm({
       setError('Tröjnummer måste vara en siffra.');
       return;
     }
-    const input = { firstName, lastName, jerseyNumber, email, teamIds };
+    const input = { firstName, lastName, jerseyNumber, email, teamIds, publishConsent: consent };
     setSaving(true);
     try {
       if (id) await updateGoaltender(db, id, input);
@@ -109,8 +113,33 @@ function GoalieForm({
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
-        hint="Används senare för inbjudan till målvaktsportalen. Inget skickas i nuvarande version."
+        hint="Målvakten loggar in i målvaktsportalen med exakt den här adressen."
       />
+      <SectionTitle>Målvaktsportal</SectionTitle>
+      <Card>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[typography.bodyStrong, { color: colors.text }]}>Samtycke till publicering</Text>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              Bekräfta att målvakten – och vårdnadshavare om målvakten är under 18 år – har gett samtycke till att
+              utvalda videor lagras i molnet och visas i målvaktsportalen. Endast videor du själv publicerar laddas upp.
+              Stäng av för att stoppa ny publicering; redan publicerade videor tar du bort från respektive video.
+            </Text>
+            {g?.publishConsentAt && consent ? (
+              <Text style={[typography.caption, { color: colors.accentGreen }]}>Registrerat {formatDate(g.publishConsentAt)}</Text>
+            ) : null}
+          </View>
+          <Switch
+            value={consent}
+            onValueChange={setConsent}
+            trackColor={{ true: colors.accentGreen, false: colors.surfaceRaised }}
+            style={{ transform: [{ scale: 1.3 }] }}
+            accessibilityLabel="Samtycke till publicering"
+          />
+        </View>
+        {g ? <PortalEraseButton goalie={g} onDone={() => setConsent(false)} /> : null}
+      </Card>
+
       <SectionTitle>Lag</SectionTitle>
       <Row>
         {data.teams.map((t) => (

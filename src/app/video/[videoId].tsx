@@ -4,6 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Loading } from '@/components/ui';
 import { VideoPlayerPanel } from '@/features/player/VideoPlayerPanel';
+import { PortalCommentsButton } from '@/features/portal/PortalCommentsButton';
+import { PublishButton } from '@/features/portal/PublishButton';
 import { deleteVideoRow, getVideo } from '@/repositories/videos';
 import { deleteVideoFile } from '@/services/videoFiles';
 import { useApp } from '@/state/AppProvider';
@@ -27,6 +29,10 @@ export default function VideoScreen() {
   }
 
   const onDelete = () => {
+    if (video.publicationStatus === 'published') {
+      Alert.alert('Videon är publicerad', 'Ta först bort den från målvaktsportalen, sedan kan du radera den från iPaden.');
+      return;
+    }
     Alert.alert(
       'Radera video?',
       `Videon av ${video.goaltenderName} raderas permanent från iPaden. Detta går inte att ångra.`,
@@ -64,7 +70,13 @@ export default function VideoScreen() {
         closeLabel="Tillbaka"
         closeIcon="chevron-back"
         onClose={close}
-        headerExtra={<Button title="Radera" icon="trash-outline" variant="danger" size="compact" onPress={onDelete} />}
+        headerExtra={
+          <>
+            <PortalCommentsButton video={video} />
+            <PublishButton video={video} />
+            <Button title="Radera" icon="trash-outline" variant="danger" size="compact" onPress={onDelete} />
+          </>
+        }
       />
     </SafeAreaView>
   );

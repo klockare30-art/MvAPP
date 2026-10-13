@@ -1,0 +1,224 @@
+-- Security tests for the goaltender portal. Run with: npm run test:db
+-- Every check raises an exception on failure (psql runs with ON_ERROR_STOP).
+
+\set QUIET on
+set client_min_messages = notice;
+
+-- ---------------------------------------------------------------------------
+-- Helpers
+-- ---------------------------------------------------------------------------
+create schema t;
+grant usage on schema t to anon, authenticated;
+
+create function t.login(p_user uuid) returns void language sql as $$
+  select set_config('request.jwt.claims', json_build_object('sub', p_user)::text, false);
+  set role authenticated;
+$$;
+
+create function t.check(p_ok boolean, p_msg text) returns void language plpgsql as $$
+begin
+  if not coalesce(p_ok, false) then raise exception 'FAILED: %', p_msg; end if;
+  raise notice 'ok - %', p_msg;
+end $$;
+
+-- Runs SQL that must fail (permission or policy violation).
+create function t.denied(p_sql text, p_msg text) returns void language plpgsql as $$
+begin
+  begin
+    execute p_sql;
+  -- Only access-control outcomes count; a typo (syntax error etc.) must still fail the test.
+  exception when insufficient_privilege or check_violation or not_null_violation or invalid_text_representation then
+    raise notice 'ok - % (denied)', p_msg;
+    return;
+  end;
+  raise exception 'FAILED: % (was allowed)', p_msg;
+end $$;
+
+-- Counts rows of a query as the current role (affected-row counts reveal silent RLS filtering).
+create function t.count(p_sql text) returns int language plpgsql as $$
+declare n int;
+begin
+  execute 'select count(*) from (' || p_sql || ') q' into n;
+  return n;
+end $$;
+
+-- Rows affected by a DML statement (RLS silently filters UPDATE/DELETE instead of raising).
+create function t.affected(p_sql text) returns int language plpgsql as $$
+declare n int;
+begin
+  execute p_sql;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+grant execute on all functions in schema t to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Fixture (as superuser)
+-- ---------------------------------------------------------------------------
+-- Coaches A and B; goaltender users Erik, William, an unconfirmed user and a stranger.
+insert into auth.users values
+  ('aaaaaaaa-0000-0000-0000-000000000001', 'coach.a@club.se', now()),
+  ('bbbbbbbb-0000-0000-0000-000000000002', 'coach.b@club.se', now()),
+  ('eeeeeeee-0000-0000-0000-000000000003', 'erik@mail.se', now()),
+  ('cccccccc-0000-0000-0000-000000000004', 'william@mail.se', now()),
+  ('dddddddd-0000-0000-0000-000000000005', 'oliver@mail.se', null),
+  ('ffffffff-0000-0000-0000-000000000006', 'stranger@mail.se', now());
+
+-- ---------------------------------------------------------------------------
+-- Coach A sets up profiles and publishes
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.coaches (id, name) values (auth.uid(), 'Coach A');
+insert into public.goaltenders (id, coach_id, first_name, jersey_number, email, consent_confirmed_at) values
+  ('11111111-0000-0000-0000-00000000e30a', auth.uid(), 'Erik', 30, 'Erik@Mail.se', now()),
+  ('11111111-0000-0000-0000-00000000b35a', auth.uid(), 'William', 35, 'william@mail.se', now()),
+  ('11111111-0000-0000-0000-00000000d01a', auth.uid(), 'Oliver', 1, 'oliver@mail.se', now());
+
+select t.denied($$insert into public.goaltenders (id, coach_id, first_name, email, consent_confirmed_at, user_id)
+  values (gen_random_uuid(), auth.uid(), 'X', 'x@mail.se', now(), 'ffffffff-0000-0000-0000-000000000006')$$,
+  'coach cannot set user_id directly');
+select t.denied($$insert into public.goaltenders (id, coach_id, first_name, email)
+  values (gen_random_uuid(), auth.uid(), 'NoConsent', 'nc@mail.se')$$,
+  'goaltender profile requires recorded consent');
+select t.denied($$insert into public.goaltenders (id, coach_id, first_name, email, consent_confirmed_at)
+  values (gen_random_uuid(), 'bbbbbbbb-0000-0000-0000-000000000002', 'X', 'x@mail.se', now())$$,
+  'coach cannot create profiles for another coach');
+
+-- Upload files to storage, then publish rows.
+insert into storage.objects (bucket_id, name) values
+  ('videos', 'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000e30a/v-erik.mov'),
+  ('videos', 'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000b35a/v-will.mov');
+select t.check(true, 'coach uploads into own folder for consented goaltender');
+select t.denied($$insert into storage.objects (bucket_id, name) values
+  ('videos', 'bbbbbbbb-0000-0000-0000-000000000002/11111111-0000-0000-0000-00000000e30a/x.mov')$$,
+  'coach cannot upload into another coach''s folder');
+
+insert into public.published_videos (id, coach_id, goaltender_id, storage_path, focus_area, recorded_at, duration_ms) values
+  ('22222222-0000-0000-0000-0000000000e1', auth.uid(), '11111111-0000-0000-0000-00000000e30a',
+   'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000e30a/v-erik.mov', 'Förflyttningar', now(), 120000),
+  ('22222222-0000-0000-0000-0000000000b1', auth.uid(), '11111111-0000-0000-0000-00000000b35a',
+   'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000b35a/v-will.mov', 'Förflyttningar', now(), 30000);
+select t.denied($$insert into public.published_videos (id, coach_id, goaltender_id, storage_path, recorded_at, duration_ms)
+  values (gen_random_uuid(), auth.uid(), '11111111-0000-0000-0000-00000000e30a',
+   'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000b35a/wrong-folder.mov', now(), 1)$$,
+  'storage path must match the goaltender');
+select t.check(t.count('select * from public.published_videos') = 2, 'coach sees own published videos');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- Coach B cannot see or touch coach A's data
+-- ---------------------------------------------------------------------------
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+insert into public.coaches (id, name) values (auth.uid(), 'Coach B');
+select t.check(t.count('select * from public.goaltenders') = 0, 'coach B sees none of coach A''s goaltenders');
+select t.check(t.count('select * from public.published_videos') = 0, 'coach B sees none of coach A''s videos');
+select t.check(t.count('select * from storage.objects') = 0, 'coach B sees none of coach A''s files');
+select t.denied($$insert into public.published_videos (id, coach_id, goaltender_id, storage_path, recorded_at, duration_ms)
+  values (gen_random_uuid(), auth.uid(), '11111111-0000-0000-0000-00000000e30a',
+   'bbbbbbbb-0000-0000-0000-000000000002/11111111-0000-0000-0000-00000000e30a/x.mov', now(), 1)$$,
+  'coach B cannot publish to coach A''s goaltender');
+-- Coach B also trains Erik (same e-mail) – a separate profile.
+insert into public.goaltenders (id, coach_id, first_name, email, consent_confirmed_at)
+  values ('11111111-0000-0000-0000-00000000e30b', auth.uid(), 'Erik', 'erik@mail.se', now());
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- Goaltender Erik: claims profiles and only sees his own videos
+-- ---------------------------------------------------------------------------
+select t.login('eeeeeeee-0000-0000-0000-000000000003');
+select t.check(t.count('select * from public.published_videos') = 0, 'before claiming, Erik sees nothing');
+select t.check(public.claim_my_goaltender_profiles() = 2, 'Erik claims both profiles registered to his e-mail (case-insensitive)');
+select t.check(public.claim_my_goaltender_profiles() = 0, 'claiming again is a no-op');
+select t.check(t.count('select * from public.goaltenders') = 2, 'Erik sees only his own profiles');
+select t.check(t.count('select * from public.published_videos') = 1, 'Erik sees exactly his own video');
+select t.check(t.count($$select * from public.published_videos where goaltender_id = '11111111-0000-0000-0000-00000000b35a'$$) = 0,
+  'Erik cannot see William''s video');
+select t.check(t.count('select * from storage.objects') = 1, 'Erik can access only his own file');
+select t.check(t.count($$select * from storage.objects where name like '%v-will.mov'$$) = 0, 'Erik cannot access William''s file');
+
+select t.denied($$insert into storage.objects (bucket_id, name) values
+  ('videos', 'eeeeeeee-0000-0000-0000-000000000003/11111111-0000-0000-0000-00000000e30a/upload.mov')$$,
+  'goaltender cannot upload files');
+select t.denied($$insert into public.published_videos (id, coach_id, goaltender_id, storage_path, recorded_at, duration_ms)
+  values (gen_random_uuid(), auth.uid(), '11111111-0000-0000-0000-00000000e30a', 'x', now(), 1)$$,
+  'goaltender cannot publish videos');
+select t.denied($$update public.goaltenders set user_id = 'ffffffff-0000-0000-0000-000000000006'$$,
+  'goaltender cannot reassign a profile');
+select t.check(t.affected($$update public.goaltenders set first_name = 'Hacker'$$) = 0, 'goaltender cannot edit profiles');
+select t.check(t.affected($$delete from public.published_videos$$) = 0, 'goaltender cannot delete videos');
+
+-- Comments
+insert into public.video_comments (video_id, author_role, timestamp_ms, content)
+  values ('22222222-0000-0000-0000-0000000000e1', 'goaltender', 18000, 'Varför tappar jag vinkeln här?');
+select t.check(true, 'Erik can comment on his own video');
+select t.denied($$insert into public.video_comments (video_id, author_role, content)
+  values ('22222222-0000-0000-0000-0000000000e1', 'trainer', 'Låtsastränare')$$,
+  'goaltender cannot post as trainer');
+select t.denied($$insert into public.video_comments (video_id, author_role, content)
+  values ('22222222-0000-0000-0000-0000000000b1', 'goaltender', 'Spionerar')$$,
+  'Erik cannot comment on William''s video');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- Other users
+-- ---------------------------------------------------------------------------
+select t.login('cccccccc-0000-0000-0000-000000000004');
+select t.check(public.claim_my_goaltender_profiles() = 1, 'William claims his profile');
+select t.check(t.count('select * from public.published_videos') = 1, 'William sees exactly his own video');
+select t.check(t.count('select * from public.video_comments') = 0, 'William cannot read comments on Erik''s video');
+reset role;
+
+select t.login('dddddddd-0000-0000-0000-000000000005');
+select t.check(public.claim_my_goaltender_profiles() = 0, 'unverified e-mail cannot claim a profile');
+select t.check(t.count('select * from public.goaltenders') = 0, 'unverified user sees nothing');
+reset role;
+
+select t.login('ffffffff-0000-0000-0000-000000000006');
+select t.check(t.count('select * from public.published_videos') = 0, 'stranger sees no videos');
+select t.check(public.claim_my_goaltender_profiles() = 0, 'stranger has nothing to claim');
+select t.check(t.count('select * from storage.objects') = 0, 'stranger sees no files');
+reset role;
+
+select set_config('request.jwt.claims', '', false);
+set role anon;
+select t.denied('select * from public.published_videos', 'anonymous users have no table access');
+select t.check(t.count('select * from storage.objects') = 0, 'anonymous users see no files');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- Coach reads goaltender comments, then revokes access / changes e-mail
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+select t.check(t.count('select * from public.video_comments') = 1, 'coach reads the goaltender''s comment');
+insert into public.video_comments (video_id, author_role, timestamp_ms, content)
+  values ('22222222-0000-0000-0000-0000000000e1', 'trainer', 18000, 'Håll balansen längre efter förflyttningen.');
+update public.goaltenders set access_revoked_at = now() where id = '11111111-0000-0000-0000-00000000e30a';
+update public.goaltenders set email = 'william.new@mail.se' where id = '11111111-0000-0000-0000-00000000b35a';
+select t.denied($$insert into storage.objects (bucket_id, name) values
+  ('videos', 'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000e30a/after-revoke.mov')$$,
+  'no new uploads to a goaltender whose access is revoked');
+reset role;
+
+select t.login('eeeeeeee-0000-0000-0000-000000000003');
+select t.check(t.count('select * from public.published_videos') = 0, 'revoked: Erik no longer sees coach A''s video');
+select t.check(t.count('select * from storage.objects') = 0, 'revoked: Erik no longer reaches the file');
+select t.check(t.count('select * from public.goaltenders') = 1, 'Erik still sees his profile with coach B');
+reset role;
+
+select t.login('cccccccc-0000-0000-0000-000000000004');
+select t.check(t.count('select * from public.published_videos') = 0, 'e-mail changed: old account unlinked');
+reset role;
+
+-- ---------------------------------------------------------------------------
+-- Deletion cascades (GDPR erasure)
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+delete from public.goaltenders where id = '11111111-0000-0000-0000-00000000e30a';
+select t.check(t.count($$select * from public.published_videos where goaltender_id = '11111111-0000-0000-0000-00000000e30a'$$) = 0,
+  'deleting a goaltender removes their published videos');
+select t.check(t.count($$select * from public.video_comments where video_id = '22222222-0000-0000-0000-0000000000e1'$$) = 0,
+  'and the comments on them');
+reset role;
+
+\echo 'ALL RLS TESTS PASSED'

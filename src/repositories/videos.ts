@@ -25,6 +25,9 @@ interface VideoRow {
   publication_status: PublicationStatus;
   recovered: number;
   note: string | null;
+  remote_id: string | null;
+  published_at: string | null;
+  publish_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +67,9 @@ function mapVideo(r: VideoRow): VideoRecording {
     publicationStatus: r.publication_status,
     recovered: r.recovered === 1,
     note: r.note,
+    remoteId: r.remote_id,
+    publishedAt: r.published_at,
+    publishError: r.publish_error,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -267,6 +273,24 @@ export async function updateVideoTags(
   await db.run(
     'UPDATE video_recordings SET focus_area_id = ?, exercise_id = ?, note = ?, updated_at = ? WHERE id = ?',
     [tags.focusAreaId, tags.exerciseId, tags.note ?? null, nowIso(), id],
+  );
+}
+
+/** Records the outcome of a publish/unpublish attempt. */
+export async function setPublication(
+  db: SqlExecutor,
+  id: Id,
+  p: { status: PublicationStatus; remoteId?: string | null; publishedAt?: string | null; error?: string | null },
+): Promise<void> {
+  await db.run(
+    `UPDATE video_recordings SET publication_status = ?, remote_id = ?, published_at = ?, publish_error = ?,
+       review_status = CASE
+         WHEN ? = 'published' THEN 'published'
+         WHEN review_status = 'published' THEN 'keep'
+         ELSE review_status END,
+       updated_at = ?
+     WHERE id = ?`,
+    [p.status, p.remoteId ?? null, p.publishedAt ?? null, p.error ?? null, p.status, nowIso(), id],
   );
 }
 

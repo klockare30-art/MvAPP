@@ -12,6 +12,8 @@ export interface GoaltenderInput {
   email?: string | null;
   photoUri?: string | null;
   teamIds?: Id[];
+  /** Coach has confirmed consent to publish to the portal. Keeps the original date when already set. */
+  publishConsent?: boolean;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +25,7 @@ export function validateGoaltenderInput(input: GoaltenderInput): string | null {
   }
   const email = input.email?.trim();
   if (email && !EMAIL_RE.test(email)) return 'E-postadressen är ogiltig.';
+  if (input.publishConsent && !email) return 'E-postadress krävs för att målvakten ska kunna logga in i portalen.';
   return null;
 }
 
@@ -45,8 +48,8 @@ export async function createGoaltender(db: SqlDatabase, input: GoaltenderInput):
   const now = nowIso();
   await db.transaction(async (tx) => {
     await tx.run(
-      `INSERT INTO goaltenders (id, first_name, last_name, jersey_number, email, photo_uri, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO goaltenders (id, first_name, last_name, jersey_number, email, photo_uri, publish_consent_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         input.firstName.trim(),
@@ -54,6 +57,7 @@ export async function createGoaltender(db: SqlDatabase, input: GoaltenderInput):
         input.jerseyNumber ?? null,
         input.email?.trim() || null,
         input.photoUri ?? null,
+        input.publishConsent ? now : null,
         now,
         now,
       ],
@@ -88,6 +92,13 @@ export async function updateGoaltender(db: SqlDatabase, id: Id, input: Goaltende
         id,
       ],
     );
+    if (input.publishConsent !== undefined) {
+      await tx.run(
+        `UPDATE goaltenders SET publish_consent_at = CASE WHEN ? = 1 THEN COALESCE(publish_consent_at, ?) ELSE NULL END
+         WHERE id = ?`,
+        [input.publishConsent ? 1 : 0, now, id],
+      );
+    }
     if (input.teamIds) {
       // Replace memberships with the given set. Profiles are never duplicated per team.
       const placeholders = input.teamIds.map(() => '?').join(',');

@@ -2,7 +2,7 @@
 
 iPad-app för målvaktstränare i ishockey: planera träningen i förväg, spela in direkt på isen, få varje video automatiskt kopplad till rätt målvakt och visa klippet för målvakten direkt – i slowmotion.
 
-**Status: Fas 1 (funktionell MVP) – implementerad, typkontrollerad och enhetstestad. Ännu INTE testad på en fysisk iPad.** Se [Verifieringsstatus](#verifieringsstatus).
+**Status:** Fas 1 (MVP) är implementerad. Fas 4:s grund, **målvaktsportalen**, är också implementerad: publicering från iPaden och en webbportal där målvakterna ser sina egna klipp. Allt är typkontrollerat och testat, men **ännu inte på en fysisk iPad eller mot ett riktigt Supabase-projekt**. Se [Verifieringsstatus](#verifieringsstatus) och [docs/PORTAL.md](docs/PORTAL.md).
 
 ---
 
@@ -32,8 +32,9 @@ iPad-app för målvaktstränare i ishockey: planera träningen i förväg, spela
 | Filer | `expo-file-system` (nya `File`/`Directory`-API:t) | Videor i `Documents/videos/` |
 | Byggen | EAS Build (molnet) | Ingen Mac behövs |
 | Test | Jest (`jest-expo`) + Nodes inbyggda `node:sqlite` | Samma SQL och migrationer som i appen |
+| Portal (valfri) | Supabase (Postgres + RLS, privat lagring, e-postinloggning) + Vite/React-webbapp i `portal/` | Se [docs/PORTAL.md](docs/PORTAL.md) |
 
-Inga externa tjänster används. Allt fungerar offline.
+Inspelning, uppspelning och granskning fungerar helt offline. Nätverk används endast när tränaren publicerar en video till en målvakt eller läser portalkommentarer.
 
 ## Kom igång på Windows
 
@@ -44,9 +45,11 @@ git clone <repo-url>
 cd MvAPP
 npm install
 
-npm test            # enhets- och integrationstester
+npm test            # enhets- och integrationstester (app)
 npm run typecheck   # TypeScript
 npm run lint        # ESLint (expo-konfig + React Compiler-regler)
+npm run test:db     # säkerhetsregler för portalen (kräver PostgreSQL 15+, t.ex. i WSL)
+cd portal && npm install && npm test && npm run build   # målvaktsportalen
 ```
 
 Lägg alltid till paket med `npx expo install <paket>` så att versionerna matchar SDK 57.
@@ -161,6 +164,7 @@ All SQL går genom en enda anslutning med en asynkron mutex (`src/db/serialized.
 - **Kameran pausas** medan ett klipp visas och behöver ca 1 s för att starta igen (SPELA IN är spärrad under tiden). `onCameraReady` triggas inte på nytt, därför en fast väntetid – behöver verifieras på enhet.
 - **Kraschåterställning**: en fil från en avbruten inspelning är ofta, men inte alltid, spelbar.
 - **iCloud-säkerhetskopia**: filer i `Documents/` ingår i iPadens säkerhetskopia. Det kan ta mycket iCloud-utrymme och är en integritetsfråga (minderåriga). Att undanta mappen kräver en liten native-modul (`NSURLIsExcludedFromBackupKey`) – planerat till fas 2.
+- **Videoformat:** H.264 är standard eftersom publicerade videor spelas i målvakternas webbläsare. HEVC (ca en tredjedel mindre filer) kan väljas under Inställningar men spelas inte i alla webbläsare.
 - **Lagringsuppskattning** bygger på Apples riktvärden (≈ 40 MB/min HEVC, ≈ 60 MB/min H.264 vid 1080p30) tills det finns minst 2 minuter egna inspelningar; därefter används uppmätt snitt.
 - **Filer utan metadata** (om databasskrivningen misslyckas efter att filen sparats) raderas aldrig automatiskt; de visas under Inställningar → Lagring. Import av dem kommer i fas 2.
 - Datum anges som text (ÅÅÅÅ-MM-DD, TT:MM) för att undvika ett extra native-beroende.
@@ -169,12 +173,15 @@ All SQL går genom en enda anslutning med en asynkron mutex (`src/db/serialized.
 
 | Kontroll | Resultat |
 |---|---|
-| `npm test` | 48 tester godkända (tillståndsmaskin, inspelningspipeline med fejkkamera, repositories mot riktig SQLite, persistens över stängning/öppning, bildstegsmatematik, lagringsberäkning, datum) |
+| `npm test` | 59 tester godkända (tillståndsmaskin, inspelningspipeline med fejkkamera, repositories mot riktig SQLite, persistens över stängning/öppning, publiceringsflöde, bildsteg, lagring, datum) |
+| `npm run test:db` | 45 säkerhetskontroller för portalen godkända mot Postgres 16 |
+| Portal | 6 tester, bygge OK, körd i Chromium mot lokal fejk-Supabase |
 | `npm run typecheck` | Inga fel |
 | `npm run lint` | Inga fel |
 | `npx expo export --platform ios` | JS-bundle byggs (Hermes) |
 | `npx expo prebuild --platform ios` | Info.plist kontrollerad: liggande, helskärm, endast iPad, svenska behörighetstexter |
 | EAS-bygge | **Ej gjort** (kräver ditt Expo-/Apple-konto) |
+| Riktigt Supabase-projekt | **Ej gjort** (kräver ditt konto, se docs/PORTAL.md) |
 | Fysisk iPad | **Ej gjort** |
 
 ## Nästa steg
@@ -188,4 +195,6 @@ Fas 2 – videohantering:
 - Import av filer utan metadata, städning av gamla exporter.
 - Miniatyrbilder i listor.
 
-Fas 3–5 enligt specifikationen (kommentarer, ritverktyg, målkalibrering, portal/Supabase, Bluetooth-fjärrkontroll).
+Fas 4 – resterande: sätta upp Supabase-projektet och testa publicering från iPad ([docs/PORTAL.md](docs/PORTAL.md)), samtyckesrutin med klubben, eventuellt uppladdning i bakgrunden.
+
+Fas 3 och 5 enligt specifikationen (ritverktyg, målkalibrering, Bluetooth-fjärrkontroll).
