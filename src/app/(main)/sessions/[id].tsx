@@ -90,13 +90,6 @@ export default function SessionDetailScreen() {
       title={session.title}
       subtitle={`${session.team.clubName} · ${session.team.name} · ${formatDateTime(session.scheduledAt)}`}
       onBack={() => router.back()}
-      actions={
-        <>
-          <Button title="Redigera" icon="create-outline" variant="secondary" size="compact" onPress={() => router.push({ pathname: '/sessions/edit', params: { id: session.id } })} />
-          <Button title="Duplicera" icon="copy-outline" variant="secondary" size="compact" onPress={onDuplicate} />
-          {videos.length === 0 ? <Button title="Ta bort" icon="trash-outline" variant="danger" size="compact" onPress={onDelete} /> : null}
-        </>
-      }
     >
       <Row>
         {session.status !== 'completed' ? (
@@ -106,12 +99,16 @@ export default function SessionDetailScreen() {
             variant="record"
             size="large"
             onPress={() => router.push(`/record/${session.id}`)}
-            style={{ minWidth: 360 }}
+            style={{ minWidth: 300 }}
           />
         ) : (
           <Button title="Återuppta träningen" icon="refresh" variant="secondary" onPress={onReopen} />
         )}
         {session.status === 'active' ? <Button title="Avsluta träning" icon="flag-outline" variant="secondary" size="large" onPress={onComplete} /> : null}
+        <View style={{ flex: 1 }} />
+        <Button title="Redigera" icon="create-outline" variant="secondary" size="compact" onPress={() => router.push({ pathname: '/sessions/edit', params: { id: session.id } })} />
+        <Button title="Duplicera" icon="copy-outline" variant="secondary" size="compact" onPress={onDuplicate} />
+        {videos.length === 0 ? <Button title="Ta bort" icon="trash-outline" variant="danger" size="compact" onPress={onDelete} /> : null}
       </Row>
 
       <SectionTitle>Sammanfattning</SectionTitle>
@@ -119,7 +116,7 @@ export default function SessionDetailScreen() {
         <Stat label="Träningstid" value={session.startedAt ? formatDuration(durationMs) : '–'} />
         <Stat label="Inspelningar" value={videos.length} tone="green" />
         {session.participants.map((g) => (
-          <Stat key={g.id} label={goaltenderShortLabel(g)} value={`${videos.filter((v) => v.goaltenderId === g.id).length} videor`} tone="blue" />
+          <Stat key={g.id} label={`${goaltenderShortLabel(g)} · videor`} value={videos.filter((v) => v.goaltenderId === g.id).length} tone="blue" />
         ))}
       </Row>
 

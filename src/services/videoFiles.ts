@@ -139,6 +139,13 @@ export function listUntrackedVideoFiles(known: Set<string>): { fileName: string;
   return out;
 }
 
+/**
+ * Free/total disk space. Throws when the platform cannot report it (total 0),
+ * so callers treat it as "unknown" instead of "disk full" and never block
+ * recording because of a missing reading.
+ */
 export function diskSpace(): { availableBytes: number; totalBytes: number } {
-  return { availableBytes: Paths.availableDiskSpace, totalBytes: Paths.totalDiskSpace };
+  const totalBytes = Paths.totalDiskSpace;
+  if (!(totalBytes > 0)) throw new Error('Lagringsutrymmet kunde inte läsas.');
+  return { availableBytes: Paths.availableDiskSpace, totalBytes };
 }

@@ -462,7 +462,7 @@ function SessionSidePanel({
   const total = counts ? [...counts.values()].reduce((a, b) => a + b, 0) : 0;
   return (
     <View style={[styles.sidePanel, { width }]}>
-      <Text style={styles.rowLabel}>{session.team.clubName.toUpperCase()}</Text>
+      <Text style={[styles.rowLabel, { width: undefined }]}>{session.team.clubName.toUpperCase()}</Text>
       <Text style={[typography.heading, { color: colors.text }]}>{session.team.name}</Text>
       <Text style={[typography.caption, { color: colors.textMuted }]}>{session.title}</Text>
       <View style={{ height: spacing.md }} />
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   tileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: spacing.md },
-  rowLabel: { ...typography.label, color: colors.textMuted, width: 76 },
+  rowLabel: { ...typography.label, color: colors.textMuted, width: 92 },
   tile: { minWidth: 168 },
   exerciseButton: {
     minWidth: 180,

@@ -41,10 +41,14 @@ export default function SettingsScreen() {
     let cache: { uri: string; sizeBytes: number }[] = [];
     try {
       disk = diskSpace();
+    } catch {
+      disk = null; // Unknown (e.g. web preview).
+    }
+    try {
       untracked = listUntrackedVideoFiles(known);
       cache = listCameraCacheFiles();
     } catch {
-      // File system information is unavailable on web / in tests.
+      // File system listing is unavailable on web / in tests.
     }
     return { stats, disk, untracked, cache };
   }, []);
