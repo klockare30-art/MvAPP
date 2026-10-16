@@ -437,3 +437,83 @@ textarea:focus {
   color: var(--text);
   font-size: 0.9rem;
 }
+
+.topActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.sectionTitle {
+  margin-top: 2rem;
+}
+.adminList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.adminRow {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.adminRow.pending {
+  border-color: var(--yellow);
+}
+.adminRow p {
+  margin: 0;
+}
+.adminHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.adminFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+.adminActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-elev);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 0 0.75rem;
+  min-height: 52px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+input[type='date'] {
+  color-scheme: dark;
+}
+.badge {
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--surface-raised);
+  color: var(--text-2);
+}
+.badge.pending {
+  background: var(--yellow);
+  color: #1a1400;
+}
+.badge.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--green);
+}
+.badge.suspended,
+.badge.expired {
+  background: rgba(239, 59, 59, 0.2);
+  color: #ff8080;
+}

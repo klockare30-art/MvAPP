@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { claimProfiles, loadProfiles, loadVideos } from './api';
+import { claimProfiles, isAdmin, loadProfiles, loadVideos } from './api';
 import { filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByDay } from './format';
 import { signOut } from './auth';
 import type { GoaltenderProfile, PublishedVideo } from './types';
@@ -10,6 +10,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
   const [profiles, setProfiles] = useState<GoaltenderProfile[]>([]);
   const [focus, setFocus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [admin, setAdmin] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,6 +26,9 @@ export function Library({ email, userId }: { email: string; userId: string }) {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       }
     })();
+    isAdmin()
+      .then((a) => !cancelled && setAdmin(a))
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -48,9 +52,16 @@ export function Library({ email, userId }: { email: string; userId: string }) {
             <span className="muted small">{me ? `${me.first_name} ${me.last_name}`.trim() : email}</span>
           </div>
         </div>
-        <button className="btn ghost" onClick={() => void signOut()}>
-          Logga ut
-        </button>
+        <div className="topActions">
+          {admin ? (
+            <a className="btn" href="#/admin">
+              Admin
+            </a>
+          ) : null}
+          <button className="btn ghost" onClick={() => void signOut()}>
+            Logga ut
+          </button>
+        </div>
       </header>
 
       <main className="content">

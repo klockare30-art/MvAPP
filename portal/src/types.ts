@@ -33,3 +33,29 @@ export interface VideoComment {
   content: string;
   created_at: string;
 }
+
+export type CoachStatus = 'pending' | 'active' | 'suspended';
+
+/** A pricing level: what a coach may store and how many goaltenders they may have. */
+export interface Plan {
+  id: string;
+  name: string;
+  max_storage_bytes: number;
+  max_goaltenders: number;
+  price_note: string;
+  sort_order: number;
+}
+
+/** One coach as the admin sees it (admin_list_coaches). */
+export interface AdminCoach {
+  id: string;
+  email: string;
+  name: string;
+  status: CoachStatus;
+  plan_id: string | null;
+  paid_until: string | null;
+  created_at: string;
+  goaltender_count: number;
+  video_count: number;
+  storage_bytes: number;
+}

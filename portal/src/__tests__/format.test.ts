@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { filterByFocus, focusAreaCounts, formatPosition, groupByDay, sortComments, stepFrame } from '../format';
+import { bytesToGb, filterByFocus, focusAreaCounts, formatBytes, formatPosition, gbToBytes, groupByDay, sortComments, stepFrame } from '../format';
 import type { PublishedVideo, VideoComment } from '../types';
 
 function v(id: string, focus: string | null, recorded: string): PublishedVideo {
@@ -57,5 +57,17 @@ describe('portal format helpers', () => {
     const t = stepFrame((100 + 0.5) / 30, 1, 30, 120);
     expect(Math.floor(t * 30)).toBe(101);
     expect(stepFrame(0, -1, 30, 10)).toBeCloseTo(0.5 / 30);
+  });
+});
+
+describe('storage sizes', () => {
+  test('formats bytes in Swedish', () => {
+    expect(formatBytes(1024 ** 3 * 1.5)).toBe('1,5 GB');
+    expect(formatBytes(320 * 1024 ** 2)).toBe('320 MB');
+    expect(formatBytes(2048)).toBe('2 kB');
+  });
+  test('GB round-trips for the level editor', () => {
+    expect(gbToBytes(1)).toBe(1073741824);
+    expect(bytesToGb(gbToBytes(2.5))).toBe(2.5);
   });
 });

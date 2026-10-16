@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { Admin } from './Admin';
 import { currentUser, isPortalConfigured, onUserChange, type PortalUser } from './auth';
 import { IS_DEMO } from './demo';
 import { Library } from './Library';
@@ -52,7 +53,9 @@ export function App() {
   else if (!user) page = <Login />;
   else {
     const match = /^#\/video\/([0-9a-f-]{36})$/.exec(hash);
-    page = match?.[1] ? (
+    page = hash === '#/admin' ? (
+      <Admin />
+    ) : match?.[1] ? (
       <VideoView videoId={match[1]} userId={user.id} />
     ) : (
       <Library email={user.email} userId={user.id} />

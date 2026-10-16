@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { GoaltenderProfile, PublishedVideo, VideoComment } from './types';
+import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 function client() {
   if (!supabase) throw new Error('Portalen är inte konfigurerad.');
@@ -78,4 +78,53 @@ export async function loadVideo(id: string): Promise<PublishedVideo | null> {
   const { data, error } = await client().from('published_videos').select('*').eq('id', id).maybeSingle();
   fail(error);
   return (data as PublishedVideo | null) ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Admin (the database rejects these calls for everyone who is not in public.admins)
+// ---------------------------------------------------------------------------
+
+export async function isAdmin(): Promise<boolean> {
+  const { data, error } = await client().rpc('is_admin');
+  fail(error);
+  return data === true;
+}
+
+export async function adminListCoaches(): Promise<AdminCoach[]> {
+  const { data, error } = await client().rpc('admin_list_coaches');
+  fail(error);
+  return ((data ?? []) as AdminCoach[]).map((c) => ({
+    ...c,
+    goaltender_count: Number(c.goaltender_count),
+    video_count: Number(c.video_count),
+    storage_bytes: Number(c.storage_bytes),
+  }));
+}
+
+export async function adminUpdateCoach(id: string, status: CoachStatus, planId: string | null, paidUntil: string | null): Promise<void> {
+  const { error } = await client().rpc('admin_update_coach', {
+    p_coach_id: id,
+    p_status: status,
+    p_plan_id: planId,
+    p_paid_until: paidUntil,
+  });
+  fail(error);
+}
+
+export async function loadPlans(): Promise<Plan[]> {
+  const { data, error } = await client().from('plans').select('*').order('sort_order').order('name');
+  fail(error);
+  return ((data ?? []) as Plan[]).map((p) => ({ ...p, max_storage_bytes: Number(p.max_storage_bytes) }));
+}
+
+export async function adminSavePlan(plan: Plan): Promise<void> {
+  const { error } = await client().rpc('admin_save_plan', {
+    p_id: plan.id,
+    p_name: plan.name,
+    p_max_storage_bytes: plan.max_storage_bytes,
+    p_max_goaltenders: plan.max_goaltenders,
+    p_price_note: plan.price_note,
+    p_sort_order: plan.sort_order,
+  });
+  fail(error);
 }

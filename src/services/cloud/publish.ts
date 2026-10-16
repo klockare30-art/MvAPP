@@ -3,7 +3,7 @@ import type { Goaltender, Id, VideoListItem } from '@/domain/types';
 import { getGoaltender } from '@/repositories/goaltenders';
 import { getVideo, listVideos, setPublication } from '@/repositories/videos';
 import { notifyDataChanged } from '@/state/dataEvents';
-import { nowIso } from '@/utils/time';
+import { formatBytes, formatDate, nowIso } from '@/utils/time';
 
 /**
  * Narrow interface to the portal backend. The real implementation wraps
@@ -12,6 +12,8 @@ import { nowIso } from '@/utils/time';
 export interface PortalApi {
   currentUserId(): Promise<string | null>;
   ensureCoach(id: string, name: string): Promise<void>;
+  /** The signed-in coach's status, level and usage (null if no coach row exists). */
+  coachAccount(): Promise<CoachAccount | null>;
   /** Insert the goaltender, or update the coach-editable fields when it exists. */
   upsertGoaltender(row: RemoteGoaltender): Promise<void>;
   createSignedUpload(path: string): Promise<{ signedUrl: string }>;
@@ -21,6 +23,38 @@ export interface PortalApi {
   removeObject(path: string): Promise<void>;
   /** Deletes the goaltender profile; published videos and comments cascade in the database. */
   deleteGoaltender(id: string): Promise<void>;
+}
+
+export interface CoachAccount {
+  status: 'pending' | 'active' | 'suspended';
+  planName: string | null;
+  paidUntil: string | null;
+  isActive: boolean;
+  maxStorageBytes: number | null;
+  usedStorageBytes: number;
+  maxGoaltenders: number | null;
+  goaltenderCount: number;
+}
+
+/**
+ * Swedish reason why the coach account cannot publish (null = OK). The database
+ * enforces the same rules; this only turns them into a clear message up front.
+ */
+export function accountBlocker(account: CoachAccount | null, fileSizeBytes = 0): string | null {
+  if (!account || account.status === 'pending') {
+    return 'Ditt tränarkonto väntar på godkännande. Kontakta administratören för att aktivera det.';
+  }
+  if (account.status === 'suspended') return 'Ditt tränarkonto är avstängt. Kontakta administratören.';
+  if (!account.isActive) {
+    return account.paidUntil
+      ? `Ditt tränarkonto var betalt till ${formatDate(account.paidUntil)}. Kontakta administratören för att förlänga.`
+      : 'Ditt tränarkonto saknar nivå. Kontakta administratören.';
+  }
+  if (account.maxStorageBytes != null && account.usedStorageBytes + fileSizeBytes > account.maxStorageBytes) {
+    const left = Math.max(0, account.maxStorageBytes - account.usedStorageBytes);
+    return `Lagringen räcker inte: videon är ${formatBytes(fileSizeBytes)} och ${formatBytes(left)} återstår på nivån ${account.planName ?? ''}. Ta bort gamla publiceringar eller byt nivå.`;
+  }
+  return null;
 }
 
 export interface RemoteGoaltender {
@@ -116,13 +150,16 @@ export async function publishVideo(
   const coachId = await api.currentUserId();
   if (!coachId) throw new Error('Logga in på målvaktsportalen under Inställningar först.');
 
+  await api.ensureCoach(coachId, coachName);
+  const accountProblem = accountBlocker(await api.coachAccount(), video.fileSizeBytes);
+  if (accountProblem) throw new Error(accountProblem);
+
   const path = storagePathFor(coachId, goalie.id, video.id, video.fileName);
   await setPublication(db, video.id, { status: 'uploading', remoteId: path });
   notifyDataChanged();
 
   let uploaded = false;
   try {
-    await api.ensureCoach(coachId, coachName);
     await api.upsertGoaltender({
       id: goalie.id,
       coach_id: coachId,

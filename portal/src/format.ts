@@ -72,3 +72,20 @@ export function stepFrame(currentSec: number, delta: number, fps: number, durati
   const last = durationSec > 0 ? Math.ceil(durationSec * f) - 1 : Number.MAX_SAFE_INTEGER;
   return (Math.min(last, Math.max(0, idx)) + 0.5) / f;
 }
+
+const GB = 1024 ** 3;
+
+/** "1,5 GB", "320 MB" – Swedish decimal comma. */
+export function formatBytes(bytes: number): string {
+  if (bytes >= GB) return `${(bytes / GB).toFixed(1).replace('.', ',')} GB`;
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
+  return `${Math.round(bytes / 1024)} kB`;
+}
+
+export const bytesToGb = (bytes: number): number => Math.round((bytes / GB) * 10) / 10;
+export const gbToBytes = (gb: number): number => Math.round(gb * GB);
+
+/** Today's date as YYYY-MM-DD in local time (for date inputs). */
+export function localDateIso(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

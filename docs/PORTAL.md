@@ -20,7 +20,7 @@ iPad-appen ── publicera ──▶ Supabase (EU) ◀── webbläsare ──
 
 ## Säkerhetsmodell (testad)
 
-`npm run test:db` kör 45 kontroller mot riktig Postgres. Bland annat:
+`npm run test:db` kör 79 kontroller mot riktig Postgres. Bland annat:
 
 - en målvakt ser bara sina egna videor, filer och kommentarer
 - en tränare ser bara sina egna målvakter
@@ -28,6 +28,10 @@ iPad-appen ── publicera ──▶ Supabase (EU) ◀── webbläsare ──
 - ej verifierad e-post ger ingen åtkomst
 - återkallad åtkomst och ändrad e-post stänger av åtkomsten direkt
 - radering av en målvakt tar bort videor och kommentarer
+- nya tränare kan inte ladda upp eller lägga till målvakter förrän admin har godkänt dem
+- tränare kan inte aktivera sig själva, välja nivå, ändra betaldatum eller göra sig till admin
+- nivåns gränser för lagring och antal målvakter gäller, och utgånget betaldatum eller avstängning stoppar uppladdning
+- avstängda tränare kan fortfarande återkalla åtkomst och radera målvakter (radering på begäran)
 
 Dessutom:
 - Videofilerna ligger i en **privat** bucket och nås bara via signerade länkar som gäller i 1 timme.
@@ -54,6 +58,31 @@ Logga in med valfri e-post och koden `123456`. `npm run build:demo` bygger demon
 5. **Authentication → Email Templates → Magic Link**: se till att mallen innehåller både `{{ .ConfirmationURL }}` och `{{ .Token }}`, så att målvakten kan logga in med kod om länken öppnas i fel webbläsare. Översätt gärna texten till svenska.
 6. **Storage → Settings**: kontrollera *maximal filstorlek*. Se avsnittet Kostnader nedan.
 7. **Project Settings → API**: kopiera *Project URL* och *anon public key*.
+
+## 1b. Admin, tränare och nivåer
+
+Migreringen `supabase/migrations/20261016000000_coach_access.sql` lägger till administration. Kör den i **SQL Editor** efter den första migreringen.
+
+**Gör dig själv till admin** (en gång). Logga först in i portalen med din e-post så att användaren finns, och kör sedan i SQL Editor:
+
+```sql
+insert into public.admins (user_id)
+select id from auth.users where email = 'din@epost.se';
+```
+
+Admin kan bara läggas till här. Appen och portalen kan inte göra någon till admin.
+
+**Flödet:**
+1. Tränaren skapar konto och loggar in i iPad-appen (Inställningar → Målvaktsportal). Kontot får status *Väntar på godkännande* och kan inte publicera ännu.
+2. Tränaren betalar, utanför appen: faktura, Swish, Stripe eller liknande.
+3. Du loggar in i portalen → **Admin** → väljer nivå och *betalt t.o.m.* → **Godkänn** / **Spara**.
+4. När betaldatumet passerat stoppas nya uppladdningar och nya målvakter automatiskt. Publicerade videor finns kvar tills de tas bort. Förläng med *+1 månad* / *+1 år*. Tomt datum betyder att kontot inte har något slutdatum.
+
+**Nivåer** (Admin → Nivåer): namn, lagring i GB, max antal målvakter och en prisanteckning. Prisanteckningen visas bara för dig. Nivån *Start* (1 GB, 10 målvakter) skapas från början. Gränserna gäller direkt för alla tränare på nivån.
+
+- Lagringen räknas på tränarens uppladdade filer. Kontrollen görs före varje uppladdning, så en enskild video kan hamna något över gränsen.
+- Summan av alla tränares nivåer måste rymmas i ert Supabase-abonnemang.
+- Ett pris i appen (köp i iPad-appen) är inte byggt. Apples regler för digitala abonnemang styr det och behöver kontrolleras innan det byggs.
 
 ## 2. Bygg och publicera portalen
 
@@ -116,9 +145,10 @@ Det här är ingen juridisk rådgivning, men följande behöver vara klart **inn
 
 | Kontroll | Status |
 |---|---|
-| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 45 kontroller godkända. Ett avsiktligt sabotage av en regel fångades. |
+| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 79 kontroller godkända. Avsiktliga sabotage (betalkrav och lagringsgräns borttagna) fångades. |
 | Portalens logik (`portal`: `npm test`) | Godkänd |
 | Portalen i Chromium mot en lokal fejk-Supabase (inloggning, bibliotek, filter, uppspelning, 0,5x, hopp via tidsstämpel) | Fungerar |
 | Publiceringsflödet i appen med fejkat API (ordning, städning vid fel, avpublicering, radering) | Godkänt i Jest |
+| Adminsidan i Chromium (demoläge, iPad- och mobilbredd, godkännande) | Fungerar |
 | Mot ett riktigt Supabase-projekt | **Ej testat** – kräver ditt projekt |
 | Uppladdning från iPad (native `PUT` mot signerad URL) | **Ej testat på enhet** |

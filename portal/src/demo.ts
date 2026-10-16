@@ -3,7 +3,7 @@
  * An in-browser stand-in for Supabase with example data, so the portal can be
  * tried without any account or server. Never enabled in the real build.
  */
-import type { GoaltenderProfile, PublishedVideo, VideoComment } from './types';
+import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === '1';
 
@@ -74,6 +74,20 @@ const comments = () => (memory ??= readComments());
 
 const wait = (ms = 150) => new Promise((r) => setTimeout(r, ms));
 
+// Admin example data (reachable at #/admin in the demo; kept in memory only).
+let demoPlans: Plan[] = [
+  { id: 'start', name: 'Start', max_storage_bytes: 1024 ** 3, max_goaltenders: 10, price_note: '', sort_order: 1 },
+  { id: 'plus', name: 'Plus', max_storage_bytes: 10 * 1024 ** 3, max_goaltenders: 30, price_note: 'exempelpris', sort_order: 2 },
+];
+let demoCoaches: AdminCoach[] = [
+  { id: 'c1', email: 'ny.tranare@exempel.se', name: 'Anna Berg', status: 'pending', plan_id: null, paid_until: null,
+    created_at: day(0, 9, 10), goaltender_count: 0, video_count: 0, storage_bytes: 0 },
+  { id: COACH_ID, email: 'tranare@exempel.se', name: 'Johan Lind', status: 'active', plan_id: 'plus', paid_until: day(-60, 12, 0).slice(0, 10),
+    created_at: day(40, 9, 0), goaltender_count: 6, video_count: 48, storage_bytes: 3.2 * 1024 ** 3 },
+  { id: 'c3', email: 'gammal@exempel.se', name: 'Per Ek', status: 'active', plan_id: 'start', paid_until: day(3, 12, 0).slice(0, 10),
+    created_at: day(200, 9, 0), goaltender_count: 4, video_count: 31, storage_bytes: 0.9 * 1024 ** 3 },
+];
+
 /** Same functions as supabaseApi.ts, backed by the example data above. */
 export const demoApi = {
   async claimProfiles() {
@@ -120,6 +134,28 @@ export const demoApi = {
   async deleteComment(id: string) {
     await wait();
     writeComments(comments().filter((c) => c.id !== id));
+  },
+  // The demo user is a goaltender, so no admin link is shown; #/admin still works for trying the page.
+  async isAdmin() {
+    await wait();
+    return false;
+  },
+  async adminListCoaches() {
+    await wait();
+    return demoCoaches;
+  },
+  async adminUpdateCoach(id: string, status: CoachStatus, planId: string | null, paidUntil: string | null) {
+    await wait();
+    if (status === 'active' && !planId) throw new Error('Välj en nivå innan tränaren aktiveras.');
+    demoCoaches = demoCoaches.map((c) => (c.id === id ? { ...c, status, plan_id: planId, paid_until: paidUntil } : c));
+  },
+  async loadPlans() {
+    await wait();
+    return demoPlans;
+  },
+  async adminSavePlan(plan: Plan) {
+    await wait();
+    demoPlans = [...demoPlans.filter((p) => p.id !== plan.id), plan].sort((a, b) => a.sort_order - b.sort_order);
   },
 };
 

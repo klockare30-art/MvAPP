@@ -9,14 +9,22 @@ import {
   removeGoaltenderFromPortal,
   storagePathFor,
   unpublishVideo,
+  accountBlocker,
+  type CoachAccount,
   type PortalApi,
 } from '../publish';
+
+const ACTIVE: CoachAccount = {
+  status: 'active', planName: 'Start', paidUntil: null, isActive: true,
+  maxStorageBytes: 1_000_000, usedStorageBytes: 0, maxGoaltenders: 10, goaltenderCount: 0,
+};
 
 function fakeApi(overrides: Partial<PortalApi> = {}) {
   const calls: string[] = [];
   const api: PortalApi = {
     currentUserId: async () => 'coach-1',
     ensureCoach: async () => void calls.push('coach'),
+    coachAccount: async () => ({ ...ACTIVE }),
     upsertGoaltender: async (row) => void calls.push(`goalie:${row.email}`),
     createSignedUpload: async (path) => (calls.push(`sign:${path}`), { signedUrl: 'https://x/sign' }),
     uploadFile: async (_f, _u, type, onProgress) => {
@@ -146,5 +154,21 @@ describe('publishing to the goaltender portal', () => {
     expect(v?.publicationStatus).toBe('local');
     expect((await getGoaltender(db, g.id))?.publishConsentAt).toBeNull();
     await expect(publishVideo(db, api, id, 'Coach')).rejects.toThrow('Samtycke');
+  });
+  test('coach account must be approved, paid and have storage left', () => {
+    expect(accountBlocker(null)).toContain('väntar på godkännande');
+    expect(accountBlocker({ ...ACTIVE, status: 'pending', isActive: false })).toContain('väntar på godkännande');
+    expect(accountBlocker({ ...ACTIVE, status: 'suspended', isActive: false })).toContain('avstängt');
+    expect(accountBlocker({ ...ACTIVE, isActive: false, paidUntil: '2026-01-31' })).toContain('betalt till');
+    expect(accountBlocker({ ...ACTIVE, usedStorageBytes: 999_500 }, 1000)).toContain('Lagringen räcker inte');
+    expect(accountBlocker({ ...ACTIVE, usedStorageBytes: 999_000 }, 1000)).toBeNull();
+  });
+
+  test('an unapproved coach uploads nothing and the video stays local', async () => {
+    const { db, id } = await setup();
+    const { api, calls } = fakeApi({ coachAccount: async () => ({ ...ACTIVE, status: 'pending', isActive: false }) });
+    await expect(publishVideo(db, api, id, 'Coach')).rejects.toThrow('väntar på godkännande');
+    expect(calls).toEqual(['coach']);
+    expect((await getVideo(db, id))?.publicationStatus).toBe('local');
   });
 });

@@ -3,7 +3,7 @@ import { UploadType } from 'expo-file-system';
 
 import { videoFile } from '@/services/videoFiles';
 
-import type { PortalApi } from './publish';
+import type { CoachAccount, PortalApi } from './publish';
 
 const BUCKET = 'videos';
 
@@ -24,12 +24,29 @@ export function createPortalApi(supabase: SupabaseClient, anonKey: string): Port
       fail(error, 'Tränarkontot kunde inte skapas');
     },
 
+    async coachAccount() {
+      const { data, error } = await supabase.rpc('my_coach_account');
+      fail(error, 'Tränarkontot kunde inte läsas');
+      const r = (data as Record<string, unknown>[] | null)?.[0];
+      if (!r) return null;
+      const num = (v: unknown) => (v == null ? null : Number(v));
+      const account: CoachAccount = {
+        status: r.status as CoachAccount['status'],
+        planName: (r.plan_name as string | null) ?? null,
+        paidUntil: (r.paid_until as string | null) ?? null,
+        isActive: r.is_active === true,
+        maxStorageBytes: num(r.max_storage_bytes),
+        usedStorageBytes: num(r.used_storage_bytes) ?? 0,
+        maxGoaltenders: num(r.max_goaltenders),
+        goaltenderCount: num(r.goaltender_count) ?? 0,
+      };
+      return account;
+    },
+
     async upsertGoaltender(row) {
-      // Plain upsert would also try to update id/coach_id, which the coach may not change.
-      const { error } = await supabase.from('goaltenders').insert(row);
-      if (!error) return;
-      if (error.code !== '23505') fail(error, 'Målvakten kunde inte sparas i portalen');
-      const { error: updErr } = await supabase
+      // Update first: an existing profile must stay editable even when the level's goaltender limit is reached
+      // (an insert attempt would be rejected by the limit before any duplicate-key check).
+      const { data, error: updErr } = await supabase
         .from('goaltenders')
         .update({
           first_name: row.first_name,
@@ -38,8 +55,15 @@ export function createPortalApi(supabase: SupabaseClient, anonKey: string): Port
           email: row.email,
           consent_confirmed_at: row.consent_confirmed_at,
         })
-        .eq('id', row.id);
+        .eq('id', row.id)
+        .select('id');
       fail(updErr, 'Målvakten kunde inte uppdateras i portalen');
+      if (data && data.length > 0) return;
+      const { error } = await supabase.from('goaltenders').insert(row);
+      if (error?.code === '42501') {
+        throw new Error('Målvakten kunde inte läggas till: nivåns gräns för antal målvakter är nådd, eller kontot är inte aktivt.');
+      }
+      fail(error, 'Målvakten kunde inte sparas i portalen');
     },
 
     async createSignedUpload(path) {
