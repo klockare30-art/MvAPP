@@ -40,6 +40,7 @@ export default function RootLayout() {
                 so an accidental gesture can never close the camera mid-recording. */}
             <Stack.Screen name="record/[sessionId]" options={{ presentation: 'fullScreenModal', gestureEnabled: false, animation: 'fade' }} />
             <Stack.Screen name="video/[videoId]" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+            <Stack.Screen name="video/trim/[videoId]" options={{ presentation: 'fullScreenModal', animation: 'fade', gestureEnabled: false }} />
           </Stack>
         </AppProvider>
       </ThemeProvider>

@@ -72,6 +72,7 @@ export default function VideoScreen() {
         onClose={close}
         headerExtra={
           <>
+            <Button title="Klipp" icon="cut-outline" variant="secondary" size="compact" onPress={() => router.push(`/video/trim/${video.id}`)} />
             <PortalCommentsButton video={video} />
             <PublishButton video={video} />
             <Button title="Radera" icon="trash-outline" variant="danger" size="compact" onPress={onDelete} />

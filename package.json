@@ -49,8 +49,8 @@
     "test": "jest",
     "lint": "expo lint",
     "doctor": "expo-doctor",
-    "build:ios:dev": "eas build --profile development --platform ios",
-    "build:ios:preview": "eas build --profile preview --platform ios",
+    "build:ios:dev": "npx eas-cli@latest build --profile development --platform ios",
+    "build:ios:preview": "npx eas-cli@latest build --profile preview --platform ios",
     "test:db": "bash scripts/test-db.sh",
     "portal:dev": "npm --prefix portal run dev",
     "portal:build": "npm --prefix portal run build"

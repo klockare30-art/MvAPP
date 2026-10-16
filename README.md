@@ -2,7 +2,7 @@
 
 iPad-app för målvaktstränare i ishockey: planera träningen i förväg, spela in direkt på isen, få varje video automatiskt kopplad till rätt målvakt och visa klippet för målvakten direkt – i slowmotion.
 
-**Status:** Fas 1 (MVP) är implementerad. Fas 4:s grund, **målvaktsportalen**, är också implementerad: publicering från iPaden och en webbportal där målvakterna ser sina egna klipp. Allt är typkontrollerat och testat, men **ännu inte på en fysisk iPad eller mot ett riktigt Supabase-projekt**. Se [Verifieringsstatus](#verifieringsstatus) och [docs/PORTAL.md](docs/PORTAL.md).
+**Status:** Fas 1 (MVP) och fas 2:s **klippning** är implementerade. Fas 4:s grund, **målvaktsportalen**, är också implementerad: publicering från iPaden och en webbportal där målvakterna ser sina egna klipp. Allt är typkontrollerat och testat, men **ännu inte på en fysisk iPad eller mot ett riktigt Supabase-projekt**. Se [Verifieringsstatus](#verifieringsstatus) och [docs/PORTAL.md](docs/PORTAL.md).
 
 ---
 
@@ -90,6 +90,8 @@ npm run build:ios:dev        # = eas build --profile development --platform ios
 
 ## Acceptanstest (fas 1)
 
+Fullständigt testprotokoll för iPaden, inklusive klippning och portal: **[docs/IPAD-TEST.md](docs/IPAD-TEST.md)**.
+
 Genomförs på riktig iPad i flygplansläge. Tips: *Inställningar → Testdata → Skapa exempeldata* skapar Borlänge Hockey U16 med Erik #30, William #35 och Oliver #1 samt en planerad träning (inga videor skapas).
 
 | # | Steg | Status |
@@ -173,7 +175,8 @@ All SQL går genom en enda anslutning med en asynkron mutex (`src/db/serialized.
 
 | Kontroll | Resultat |
 |---|---|
-| `npm test` | 59 tester godkända (tillståndsmaskin, inspelningspipeline med fejkkamera, repositories mot riktig SQLite, persistens över stängning/öppning, publiceringsflöde, bildsteg, lagring, datum) |
+| `npm test` | 70 tester godkända (tillståndsmaskin, inspelningspipeline med fejkkamera, repositories mot riktig SQLite, persistens över stängning/öppning, klippning, publiceringsflöde, bildsteg, lagring, datum) |
+| Klippmodul (Swift) | **Ej kompilerad** – byggs först i EAS (ingen Mac/Xcode här). Autolinking hittar modulen. |
 | `npm run test:db` | 45 säkerhetskontroller för portalen godkända mot Postgres 16 |
 | Portal | 6 tester, bygge OK, körd i Chromium mot lokal fejk-Supabase |
 | `npm run typecheck` | Inga fel |
@@ -189,7 +192,7 @@ All SQL går genom en enda anslutning med en asynkron mutex (`src/db/serialized.
 **Först**: bygg en development build, kör acceptanstestet på iPaden och rapportera avvikelser.
 
 Fas 2 – videohantering:
-- Trimning med lokal Expo-modul (`AVAssetExportSession`, passthrough – ingen omkodning) och flera klipp per inspelning; originalet raderas aldrig före verifierad export.
+- ~~Trimning~~ **klar**: lokal Expo-modul `modules/goalievision-trim` (`AVAssetExportSession` passthrough, ingen omkodning), flera klipp per inspelning, "Spara som nytt klipp" eller "Ersätt originalet". Originalet tas bort först när klippet är sparat och verifierat.
 - Granskningsvy efter träning med status och massåtgärder.
 - Undanta videomappen från iCloud-säkerhetskopia.
 - Import av filer utan metadata, städning av gamla exporter.
