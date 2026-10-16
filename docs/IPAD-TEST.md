@@ -1,5 +1,7 @@
 # Testa GoalieVision på iPaden
 
+> Utan Apple Developer-konto: börja med `EXPO-GO-TEST.md` (gratis, allt utom klippning).
+
 Det här är första gången appen körs på riktig hårdvara, och även första gången klippmodulens Swift-kod kompileras. Det är normalt att något behöver rättas. Fyll i resultatkolumnen och skicka tillbaka protokollet med ev. felmeddelanden eller skärmdumpar, så rättar jag.
 
 ## Förberedelser (en gång, på Windows)
