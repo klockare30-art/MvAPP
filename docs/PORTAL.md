@@ -33,6 +33,18 @@ Dessutom:
 - Videofilerna ligger i en **privat** bucket och nås bara via signerade länkar som gäller i 1 timme.
 - Publicering kräver att tränaren har registrerat **samtycke** för målvakten.
 
+## 0. Prova demon först (inget konto behövs)
+
+Portalen har ett demoläge med exempeldata som körs helt i webbläsaren. Ingen server används och ingenting laddas upp.
+
+```powershell
+cd portal
+npm install
+npm run dev:demo        # öppna adressen som skrivs ut, t.ex. http://localhost:5173
+```
+
+Logga in med valfri e-post och koden `123456`. `npm run build:demo` bygger demon till `portal/dist-demo/`. Det vanliga bygget (`npm run build`) innehåller ingen demokod.
+
 ## 1. Skapa Supabase-projektet
 
 1. Skapa ett konto på supabase.com och ett nytt projekt. Välj en **EU-region** (t.ex. Stockholm om den finns, annars Frankfurt/Irland).

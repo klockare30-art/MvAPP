@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { claimProfiles, loadProfiles, loadVideos } from './api';
 import { filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByDay } from './format';
-import { supabase } from './supabase';
+import { signOut } from './auth';
 import type { GoaltenderProfile, PublishedVideo } from './types';
 
 export function Library({ email, userId }: { email: string; userId: string }) {
@@ -48,7 +48,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
             <span className="muted small">{me ? `${me.first_name} ${me.last_name}`.trim() : email}</span>
           </div>
         </div>
-        <button className="btn ghost" onClick={() => supabase?.auth.signOut()}>
+        <button className="btn ghost" onClick={() => void signOut()}>
           Logga ut
         </button>
       </header>

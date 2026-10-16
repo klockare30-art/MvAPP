@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
-import { supabase } from './supabase';
+import { sendLoginEmail, verifyCode } from './auth';
+import { IS_DEMO } from './demo';
 
 /**
  * Passwordless login. The e-mail contains both a link and a 6-digit code; the
@@ -16,26 +17,29 @@ export function Login() {
 
   const send = async (e: FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
-    });
-    setBusy(false);
-    if (err) setError('Kunde inte skicka inloggningsmejlet. Kontrollera adressen och försök igen.');
-    else setStep('code');
+    try {
+      await sendLoginEmail(email);
+      setStep('code');
+    } catch {
+      setError('Kunde inte skicka inloggningsmejlet. Kontrollera adressen och försök igen.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const verify = async (e: FormEvent) => {
     e.preventDefault();
-    if (!supabase) return;
     setBusy(true);
     setError(null);
-    const { error: err } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (err) setError('Koden stämmer inte eller har gått ut. Begär en ny kod.');
+    try {
+      await verifyCode(email, code);
+    } catch {
+      setError('Koden stämmer inte eller har gått ut. Begär en ny kod.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -51,6 +55,7 @@ export function Login() {
         {step === 'email' ? (
           <form onSubmit={send} className="stack">
             <p>Logga in med e-postadressen som din målvaktstränare har registrerat.</p>
+            {IS_DEMO ? <p className="demoHint">Demo: skriv valfri e-postadress.</p> : null}
             <label className="field">
               <span>E-post</span>
               <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -64,6 +69,7 @@ export function Login() {
             <p>
               Vi har skickat ett mejl till <strong>{email}</strong>. Klicka på länken i mejlet, eller skriv in koden här.
             </p>
+            {IS_DEMO ? <p className="demoHint">Demo: inget mejl skickas – skriv valfri sexsiffrig kod, t.ex. 123456.</p> : null}
             <label className="field">
               <span>Kod från mejlet</span>
               <input

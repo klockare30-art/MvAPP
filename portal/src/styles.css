@@ -240,6 +240,8 @@ textarea:focus {
   gap: 0.75rem;
 }
 .videoCard {
+  /* min-width: 0 lets long notes ellipsize instead of widening the card past the screen. */
+  min-width: 0;
   display: flex;
   gap: 0.75rem;
   align-items: center;
@@ -411,4 +413,27 @@ textarea:focus {
     flex: 1 1 28%;
     padding: 0 0.5rem;
   }
+}
+
+.demoBanner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--yellow);
+  color: #1a1400;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+.demoBanner + .page .topbar {
+  top: 2.2rem;
+}
+.demoHint {
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px dashed var(--yellow);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text);
+  font-size: 0.9rem;
 }
