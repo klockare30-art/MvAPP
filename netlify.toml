@@ -1,0 +1,18 @@
+# Netlify: builds and hosts the goaltender portal (portal/). The iPad app is not deployed here.
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY under
+# Site configuration → Environment variables before the first deploy.
+[build]
+  base = "portal"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Robots-Tag = "noindex, nofollow"
