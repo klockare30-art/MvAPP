@@ -24,7 +24,9 @@ export interface MatchTag {
   atSec: number;
   beforeSec: number;
   afterSec: number;
-  /** Set once the clip is published: who it went to (shown after a reload, prevents double uploads). */
+  /** Goaltender for this clip when it differs from the match goaltender (e.g. a change mid-game). */
+  goalieId?: string;
+  /** Set once the clip is saved: who it went to (shown after a reload, prevents double uploads). */
   publishedTo?: string;
 }
 
@@ -96,4 +98,19 @@ export function parseStoredTags(raw: string | null): MatchTag[] {
 
 export function countByType(tags: MatchTag[]): { type: TagType; count: number }[] {
   return TAG_TYPES.map((type) => ({ type, count: tags.filter((t) => t.type === type.id).length })).filter((c) => c.count > 0);
+}
+
+/** Pseudo team id for goaltenders that are not in any team. */
+export const NO_TEAM = '__none__';
+
+/** Goaltenders shown for a chosen team (NO_TEAM = those without a valid team). */
+export function goaliesInTeam<G extends { team_id: string | null }>(goalies: G[], teamIds: string[], teamId: string): G[] {
+  return teamId === NO_TEAM
+    ? goalies.filter((g) => !g.team_id || !teamIds.includes(g.team_id))
+    : goalies.filter((g) => g.team_id === teamId);
+}
+
+/** Clips to act on: the marked ones, or every tag when nothing is marked. Always in match order. */
+export function chosenTags(tags: MatchTag[], marked: ReadonlySet<string>): MatchTag[] {
+  return sortTags(marked.size > 0 ? tags.filter((t) => marked.has(t.id)) : tags);
 }

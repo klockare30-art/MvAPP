@@ -152,7 +152,13 @@ Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas f
 - **Snabbspola:** håll knappen eller tangenten **F** för framåt och **B** för bakåt. Välj 2x, 4x, 8x eller 16x. När du släpper framåt går videon tillbaka till normal fart, 2 s bakåt.
   - Bakåt fungerar genom snabba hopp, eftersom webbläsare inte kan spela video baklänges. Det kan därför se ryckigare ut än framåt.
 - **Tagga:** S skott, R retur, I ingång, C scanning, M mål, O övrigt. Klicka också går. Varje tagg blir ett klipp, som standard 6 s före och 3 s efter. Marginalerna går att ändra per tagg.
-- **Till målvakt:** välj målvakt, matchnamn och datum. **Till Erik** eller **Skicka alla till Erik** klipper ut klippet och laddar upp det. Klippet hamnar hos målvakten i portalen med taggen som fokusområde.
+- **Spara klipp:** välj **lag**, **målvakt**, matchnamn och datum. Målvaktslistan visar bara det valda lagets målvakter.
+  - Varje tagg kan få en egen målvakt, t.ex. vid målvaktsbyte. Annars används matchens målvakt.
+  - **Spara klipp** eller **Spara alla/markerade** klipper ut och laddar upp. Klippen hamnar hos målvakten med taggen som fokusområde och lagets namn.
+- **Markera och visa:**
+  - markera klipp med rutorna, eller med **Alla** och per typ, t.ex. **Skott (5)**
+  - **▶ Visa markerade** spelar klippen i följd i normal fart, med Föregående och Nästa. Det passar för genomgångar.
+  - Spara och ladda ner gäller de markerade klippen, eller alla om inget är markerat.
   - Klippningen sker utan omkodning: samma kvalitet, under 1 s per klipp.
   - Bara klippet laddas upp, aldrig hela matchen.
   - Klippet börjar vid närmaste nyckelbildruta före vald start. Hur tätt de ligger visas när filen öppnas.

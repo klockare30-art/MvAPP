@@ -2,9 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import {
   clipFileName,
+  chosenTags,
   clipRange,
   countByType,
   formatClock,
+  goaliesInTeam,
+  NO_TEAM,
   newTag,
   parseStoredTags,
   sortTags,
@@ -43,5 +46,24 @@ describe('match tagging', () => {
     expect(parseStoredTags('not json')).toEqual([]);
     expect(parseStoredTags(JSON.stringify([{ id: 1 }]))).toEqual([]);
     expect(parseStoredTags(null)).toEqual([]);
+  });
+});
+
+describe('choosing goaltenders by team', () => {
+  const g = (id: string, team_id: string | null) => ({ id, team_id });
+  const goalies = [g('erik', 't1'), g('william', 't1'), g('oliver', 't2'), g('hugo', null), g('stale', 'deleted-team')];
+  test('lists the team\'s goaltenders, and those without a valid team under NO_TEAM', () => {
+    expect(goaliesInTeam(goalies, ['t1', 't2'], 't1').map((x) => x.id)).toEqual(['erik', 'william']);
+    expect(goaliesInTeam(goalies, ['t1', 't2'], NO_TEAM).map((x) => x.id)).toEqual(['hugo', 'stale']);
+  });
+});
+
+describe('marking clips', () => {
+  test('acts on marked clips in match order, or on all when none are marked', () => {
+    const a = newTag('skott', 50);
+    const b = newTag('retur', 10);
+    const c = newTag('skott', 30);
+    expect(chosenTags([a, b, c], new Set([a.id, c.id])).map((t) => t.atSec)).toEqual([30, 50]);
+    expect(chosenTags([a, b, c], new Set()).map((t) => t.atSec)).toEqual([10, 30, 50]);
   });
 });

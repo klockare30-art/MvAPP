@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { addGoaltender, becomeCoach, clipPortalApi, listClubs, listMyGoaltenders, listTeams, myCoachAccount } from './api';
-import { GoalieForm } from './GoalieForm';
+import { GoalieForm, TeamOptions } from './GoalieForm';
 import { exportClip, inspectMatchFile, type MatchFileInfo } from './clipExport';
 import { formatBytes, localDateIso } from './format';
 import { accountBlocker, goalieLabel, publishClip, type Club, type CoachAccount, type CoachGoaltender, type Team } from './publishClip';
@@ -11,8 +11,11 @@ import {
   countByType,
   DEFAULT_AFTER_SEC,
   DEFAULT_BEFORE_SEC,
+  chosenTags,
   formatClock,
+  goaliesInTeam,
   newTag,
+  NO_TEAM,
   parseStoredTags,
   REWIND_ON_RELEASE_SEC,
   sortTags,
@@ -59,6 +62,9 @@ export function MatchTagger() {
   const [after, setAfter] = useState(DEFAULT_AFTER_SEC);
   const [clips, setClips] = useState<Record<string, ClipState>>({});
   const [lastTag, setLastTag] = useState<string | null>(null);
+  const [marked, setMarked] = useState<Set<string>>(() => new Set());
+  /** Presentation: plays the chosen clips one after another. */
+  const [show, setShow] = useState<{ ids: string[]; i: number } | null>(null);
   const [rewinding, setRewinding] = useState(false);
   const [publishing, setPublishing] = useState<Record<string, PublishState>>({});
   const [account, setAccount] = useState<CoachAccount | null | undefined>(undefined);
@@ -67,6 +73,7 @@ export function MatchTagger() {
   const [clubs, setClubs] = useState<Club[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [goalieId, setGoalieId] = useState('');
+  const [teamId, setTeamId] = useState('');
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState(() => localDateIso());
   const video = useRef<HTMLVideoElement>(null);
@@ -87,7 +94,11 @@ export function MatchTagger() {
         setGoalies(g);
         setClubs(c);
         setTeams(t);
-        setGoalieId((cur) => cur || g[0]?.id || '');
+        // Start on the first team that has goaltenders (else "no team").
+        const ids = t.map((x) => x.id);
+        const firstTeam = t.find((x) => g.some((y) => y.team_id === x.id))?.id ?? NO_TEAM;
+        setTeamId((cur) => cur || firstTeam);
+        setGoalieId((cur) => cur || goaliesInTeam(g, ids, firstTeam)[0]?.id || '');
       }
     } catch (e) {
       setAccountError(e instanceof Error ? e.message : String(e));
@@ -276,13 +287,60 @@ export function MatchTagger() {
     }
   };
 
+  const chosen = chosenTags(tags, marked);
   const saveAll = async () => {
-    for (const t of tags) await saveClip(t);
+    for (const t of chosen) await saveClip(t);
   };
 
-  const goalie = goalies.find((g) => g.id === goalieId) ?? null;
+  const toggleMark = (id: string) =>
+    setMarked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const markType = (type: string | null) =>
+    setMarked(new Set(tags.filter((t) => type == null || t.type === type).map((t) => t.id)));
+
+  const showTag = show ? tags.find((t) => t.id === show.ids[show.i]) ?? null : null;
+
+  // Presentation: jump to each clip's start, play at normal speed, advance at its end.
+  useEffect(() => {
+    const v = video.current;
+    if (!v || !showTag) return;
+    const r = clipRange(showTag, duration);
+    v.playbackRate = 1;
+    v.currentTime = r.startSec;
+    void v.play().catch(() => undefined);
+    const onTime = () => {
+      if (v.currentTime < r.endSec) return;
+      setShow((s) => {
+        if (!s) return s;
+        if (s.i + 1 < s.ids.length) return { ...s, i: s.i + 1 };
+        v.pause();
+        return null;
+      });
+    };
+    v.addEventListener('timeupdate', onTime);
+    return () => v.removeEventListener('timeupdate', onTime);
+  }, [showTag, duration]);
+
+  const stepShow = (d: number) =>
+    setShow((s) => (s ? { ...s, i: Math.min(s.ids.length - 1, Math.max(0, s.i + d)) } : s));
+
+  const teamIds = teams.map((t) => t.id);
+  const teamGoalies = goaliesInTeam(goalies, teamIds, teamId);
+  const goalie = teamGoalies.find((g) => g.id === goalieId) ?? null;
+  /** The clip's goaltender: chosen on the tag, else the match goaltender. */
+  const goalieFor = (tag: MatchTag) => (tag.goalieId ? goalies.find((g) => g.id === tag.goalieId) ?? null : goalie);
+
+  const chooseTeam = (id: string) => {
+    setTeamId(id);
+    setGoalieId(goaliesInTeam(goalies, teamIds, id)[0]?.id ?? '');
+  };
 
   const publishTag = async (tag: MatchTag) => {
+    const goalie = goalieFor(tag);
     if (!file || !goalie) return;
     setPublishing((p) => ({ ...p, [tag.id]: { kind: 'working' } }));
     try {
@@ -314,11 +372,12 @@ export function MatchTagger() {
   };
 
   const publishAll = async () => {
-    for (const t of tags) if (!t.publishedTo) await publishTag(t);
+    for (const t of chosen) if (!t.publishedTo) await publishTag(t);
     void loadCoach();
   };
 
-  const canPublish = !!account?.isActive && !!goalie && !!info;
+  const canPublish = !!account?.isActive && !!info;
+  const unsaved = chosen.filter((t) => !t.publishedTo);
 
   const setMargin = (id: string, field: 'beforeSec' | 'afterSec', value: number) => {
     if (!Number.isFinite(value) || value < 0 || value > 120) return;
@@ -391,8 +450,36 @@ export function MatchTagger() {
 
             <div className="tagLayout">
               <section className="tagPlayer">
-                <div className="videoBox">
+                <div className="videoBox showBox">
                   {url ? <video ref={video} src={url} controls playsInline preload="auto" /> : null}
+                  {show && showTag ? (
+                    <div className="showBar">
+                      <span>
+                        <strong>
+                          {show.i + 1} / {show.ids.length}
+                        </strong>{' '}
+                        · {tagTypeById(showTag.type).label} {formatClock(showTag.atSec)}
+                        {goalieFor(showTag) ? ` · ${goalieLabel(goalieFor(showTag)!)}` : ''}
+                      </span>
+                      <span className="showButtons">
+                        <button className="btn small" disabled={show.i === 0} onClick={() => stepShow(-1)}>
+                          ◀ Föregående
+                        </button>
+                        <button className="btn small" disabled={show.i + 1 >= show.ids.length} onClick={() => stepShow(1)}>
+                          Nästa ▶
+                        </button>
+                        <button
+                          className="btn small"
+                          onClick={() => {
+                            setShow(null);
+                            video.current?.pause();
+                          }}
+                        >
+                          Avsluta
+                        </button>
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <TagTimeline tags={tags} duration={duration} onSeek={(s) => seek(s)} />
@@ -456,6 +543,9 @@ export function MatchTagger() {
                   goalies={goalies}
                   clubs={clubs}
                   teams={teams}
+                  teamId={teamId}
+                  onTeam={chooseTeam}
+                  teamGoalies={teamGoalies}
                   goalieId={goalieId}
                   onGoalie={setGoalieId}
                   matchTitle={matchTitle}
@@ -465,24 +555,51 @@ export function MatchTagger() {
                   onChanged={loadCoach}
                   onAdded={(g) => {
                     setGoalies((prev) => [...prev, g]);
+                    setTeamId(g.team_id && teamIds.includes(g.team_id) ? g.team_id : NO_TEAM);
                     setGoalieId(g.id);
                   }}
                 />
                 <div className="tagListHead">
                   <h2>Taggar ({tags.length})</h2>
                   <div className="tagListActions">
-                    <button className="btn" disabled={tags.length === 0 || !info} onClick={() => void saveAll()}>
-                      Ladda ner alla
+                    <button
+                      className="btn"
+                      disabled={chosen.length === 0 || !info}
+                      onClick={() => setShow({ ids: chosen.map((t) => t.id), i: 0 })}
+                    >
+                      ▶ Visa {marked.size > 0 ? `markerade (${chosen.length})` : 'alla'}
                     </button>
                     <button
                       className="btn primary"
-                      disabled={!canPublish || tags.every((t) => t.publishedTo)}
+                      disabled={!canPublish || unsaved.length === 0 || unsaved.some((t) => !goalieFor(t))}
                       onClick={() => void publishAll()}
                     >
-                      Skicka alla till {goalie ? goalie.first_name : 'målvakt'}
+                      Spara {marked.size > 0 ? 'markerade' : 'alla'}
+                      {unsaved.length > 0 ? ` (${unsaved.length})` : ''}
                     </button>
                   </div>
                 </div>
+                {tags.length > 0 ? (
+                  <div className="markBar small">
+                    <span className="muted">Markera:</span>
+                    <button className={`chip mini ${marked.size === tags.length ? 'on' : ''}`} onClick={() => markType(null)}>
+                      Alla
+                    </button>
+                    {counts.map((c) => (
+                      <button key={c.type.id} className="chip mini" onClick={() => markType(c.type.id)}>
+                        {c.type.label} ({c.count})
+                      </button>
+                    ))}
+                    {marked.size > 0 ? (
+                      <button className="link small" onClick={() => setMarked(new Set())}>
+                        Avmarkera ({marked.size})
+                      </button>
+                    ) : null}
+                    <button className="link small" disabled={chosen.length === 0 || !info} onClick={() => void saveAll()}>
+                      Ladda ner {marked.size > 0 ? 'markerade' : 'alla'}
+                    </button>
+                  </div>
+                ) : null}
                 {counts.length > 0 ? (
                   <p className="small muted">{counts.map((c) => `${c.type.label} ${c.count}`).join(' · ')}</p>
                 ) : (
@@ -495,8 +612,19 @@ export function MatchTagger() {
                     const st = clips[t.id];
                     const pub = publishing[t.id];
                     return (
-                      <li key={t.id} className={t.id === lastTag ? 'fresh' : ''} style={{ borderLeftColor: type.color }}>
+                      <li
+                        key={t.id}
+                        className={`${t.id === lastTag ? 'fresh' : ''} ${marked.has(t.id) ? 'marked' : ''} ${showTag?.id === t.id ? 'playing' : ''}`}
+                        style={{ borderLeftColor: type.color }}
+                      >
                         <div className="tagRowHead">
+                          <input
+                            type="checkbox"
+                            className="markBox"
+                            checked={marked.has(t.id)}
+                            onChange={() => toggleMark(t.id)}
+                            aria-label={`Markera ${type.label} ${formatClock(t.atSec)}`}
+                          />
                           <button className="stamp" onClick={() => seek(r.startSec, true)} title="Spela klippet">
                             ▶ {formatClock(t.atSec)}
                           </button>
@@ -510,19 +638,39 @@ export function MatchTagger() {
                           s före ·
                           <input type="number" min={0} max={120} value={t.afterSec} onChange={(e) => setMargin(t.id, 'afterSec', Number(e.target.value))} />
                           s efter
-                          <button className="btn small" disabled={!info || st?.kind === 'working'} onClick={() => void saveClip(t)}>
+                          <button className="link small" disabled={!info || st?.kind === 'working'} onClick={() => void saveClip(t)}>
                             {st?.kind === 'working' ? 'Klipper…' : 'Ladda ner'}
                           </button>
+                        </div>
+                        <div className="tagRowSave small">
                           {t.publishedTo ? (
-                            <span className="published">✓ {t.publishedTo}</span>
+                            <span className="published">✓ Sparat hos {t.publishedTo}</span>
                           ) : (
-                            <button
-                              className="btn small primary"
-                              disabled={!canPublish || pub?.kind === 'working'}
-                              onClick={() => void publishTag(t)}
-                            >
-                              {pub?.kind === 'working' ? 'Skickar…' : `Till ${goalie ? goalie.first_name : 'målvakt'}`}
-                            </button>
+                            <>
+                              <select
+                                value={t.goalieId ?? ''}
+                                onChange={(e) =>
+                                  updateTags((prev) => prev.map((x) => (x.id === t.id ? { ...x, goalieId: e.target.value || undefined } : x)))
+                                }
+                                aria-label="Målvakt för klippet"
+                              >
+                                <option value="">{goalie ? `Matchens målvakt (${goalieLabel(goalie)})` : 'Välj målvakt'}</option>
+                                {goalies
+                                  .filter((g) => g.id !== goalie?.id)
+                                  .map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                      {goalieLabel(g)}
+                                    </option>
+                                  ))}
+                              </select>
+                              <button
+                                className="btn small primary"
+                                disabled={!canPublish || !goalieFor(t) || pub?.kind === 'working'}
+                                onClick={() => void publishTag(t)}
+                              >
+                                {pub?.kind === 'working' ? 'Sparar…' : 'Spara klipp'}
+                              </button>
+                            </>
                           )}
                         </div>
                         {pub?.kind === 'error' ? <div className="error small">{pub.message}</div> : null}
@@ -578,6 +726,9 @@ function PortalPanel(props: {
   goalies: CoachGoaltender[];
   clubs: Club[];
   teams: Team[];
+  teamId: string;
+  onTeam: (id: string) => void;
+  teamGoalies: CoachGoaltender[];
   goalieId: string;
   onGoalie: (id: string) => void;
   matchTitle: string;
@@ -598,7 +749,7 @@ function PortalPanel(props: {
   if (account === null) {
     return (
       <div className="portalPanel">
-        <strong>Skicka klipp till målvakter</strong>
+        <strong>Spara klipp</strong>
         <p className="small muted">Kräver en tränarprofil som administratören godkänner.</p>
         {error ? <p className="error small">{error}</p> : null}
         <button
@@ -623,7 +774,7 @@ function PortalPanel(props: {
   if (blocker) {
     return (
       <div className="portalPanel">
-        <strong>Skicka klipp till målvakter</strong>
+        <strong>Spara klipp</strong>
         <p className="demoHint small">{blocker}</p>
         <button className="link small" onClick={() => void props.onChanged()}>
           Uppdatera
@@ -632,41 +783,30 @@ function PortalPanel(props: {
     );
   }
 
-  const withoutTeam = goalies.filter((g) => !g.team_id || !teams.some((t) => t.id === g.team_id));
+  const withoutTeam = goaliesInTeam(goalies, teams.map((t) => t.id), NO_TEAM);
 
   return (
     <div className="portalPanel">
-      <strong>Skicka klipp till målvakt</strong>
+      <strong>Spara matchens klipp</strong>
+      <p className="small muted">Klippen sparas under valt lag och målvakt. Målvakten ser dem direkt i portalen.</p>
       <div className="portalFields">
+        <label className="field">
+          Lag
+          <select value={props.teamId} onChange={(e) => props.onTeam(e.target.value)}>
+            {teams.length === 0 && withoutTeam.length === 0 ? <option value="">Inga lag än</option> : null}
+            <TeamOptions clubs={props.clubs} teams={teams} />
+            {withoutTeam.length > 0 ? <option value={NO_TEAM}>Målvakter utan lag</option> : null}
+          </select>
+        </label>
         <label className="field">
           Målvakt
           <select value={props.goalieId} onChange={(e) => props.onGoalie(e.target.value)}>
-            {goalies.length === 0 ? <option value="">Inga målvakter än</option> : null}
-            {props.clubs.map((c) =>
-              teams
-                .filter((t) => t.club_id === c.id)
-                .map((t) => {
-                  const own = goalies.filter((g) => g.team_id === t.id);
-                  return own.length > 0 ? (
-                    <optgroup key={t.id} label={`${c.name} – ${t.name}`}>
-                      {own.map((g) => (
-                        <option key={g.id} value={g.id}>
-                          {goalieLabel(g)}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ) : null;
-                }),
-            )}
-            {withoutTeam.length > 0 ? (
-              <optgroup label="Utan lag">
-                {withoutTeam.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {goalieLabel(g)}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
+            {props.teamGoalies.length === 0 ? <option value="">Inga målvakter i laget</option> : null}
+            {props.teamGoalies.map((g) => (
+              <option key={g.id} value={g.id}>
+                {goalieLabel(g)}
+              </option>
+            ))}
           </select>
         </label>
         <label className="field">
@@ -691,6 +831,7 @@ function PortalPanel(props: {
         <GoalieForm
           clubs={props.clubs}
           teams={teams}
+          defaultTeamId={props.teamId === NO_TEAM ? null : props.teamId}
           onCancel={() => setAdding(false)}
           onSave={async (input) => {
             const g = await addGoaltender(input);
