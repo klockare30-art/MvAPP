@@ -20,7 +20,7 @@ iPad-appen ── publicera ──▶ Supabase (EU) ◀── webbläsare ──
 
 ## Säkerhetsmodell (testad)
 
-`npm run test:db` kör 96 kontroller mot riktig Postgres. Bland annat:
+`npm run test:db` kör 106 kontroller mot riktig Postgres. Bland annat:
 
 - en målvakt ser bara sina egna videor, filer och kommentarer
 - en tränare ser bara sina egna målvakter
@@ -145,6 +145,21 @@ Kräver migreringen `supabase/migrations/20261018000000_clubs_teams.sql`. Kör d
 - Originalet på iPaden eller datorn påverkas inte.
 - Taggarna i matchtaggningen och iPad-appen kan fortfarande visa klippet som publicerat, eftersom det inte synkas.
 
+## 4d. Kontrollpanel – egna taggar och kortkommandon
+
+Kräver migreringen `supabase/migrations/20261019000000_tag_types.sql`. Kör den i SQL Editor.
+
+- Portalen → **Kontrollpanel**, som syns för tränare. Där finns taggarna som används i matchtaggningen.
+  - Per tagg: färg, namn, kortkommando och sekunder före och efter.
+  - Taggar kan läggas till, tas bort och flyttas, och ordningen sparas.
+- Listan sparas **på tränarens konto**, inte i webbläsaren, och följer därför med till alla datorer.
+- **Spärrar** i både portalen och databasen:
+  - F och B är reserverade för snabbspolning.
+  - Varje tangent och varje namn får bara användas en gång.
+  - Högst 30 taggar.
+- Har tränaren inte sparat någon egen lista används standardtaggarna: Skott, Retur, Ingång, Scanning, Mål och Övrigt.
+- Tas en tagg bort finns redan gjorda taggar kvar, märkta "Borttagen tagg".
+
 ## 5. Matchtaggning (test)
 
 Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas från datorn och laddas **inte** upp.
@@ -201,7 +216,7 @@ Det här är ingen juridisk rådgivning, men följande behöver vara klart **inn
 
 | Kontroll | Status |
 |---|---|
-| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 96 kontroller godkända. Avsiktliga sabotage (betalkrav, lagringsgräns och lagägarskap borttagna) fångades. |
+| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 106 kontroller godkända. Avsiktliga sabotage (betalkrav, lagringsgräns och lagägarskap borttagna) fångades. |
 | Portalens logik (`portal`: `npm test`) | Godkänd |
 | Portalen i Chromium mot en lokal fejk-Supabase (inloggning, bibliotek, filter, uppspelning, 0,5x, hopp via tidsstämpel) | Fungerar |
 | Publiceringsflödet i appen med fejkat API (ordning, städning vid fel, avpublicering, radering) | Godkänt i Jest |

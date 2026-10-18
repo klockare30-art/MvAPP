@@ -379,4 +379,37 @@ select t.check(t.affected($$delete from public.published_videos where id = '2222
 select t.check(t.affected($$delete from storage.objects where name like '%v-will.mov'$$) = 1, 'coach A deletes own file');
 reset role;
 
+-- ---------------------------------------------------------------------------
+-- Coach tag types (control panel)
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+select public.save_my_tag_types($$[
+  {"id":"skott","label":"Skott","shortcut":"s","color":"#2f7bff","before_sec":6,"after_sec":3},
+  {"id":"pass-bakom","label":"Pass bakom mål","shortcut":"p","color":"#22c55e","before_sec":8,"after_sec":4}
+]$$::jsonb);
+select t.check(t.count('select * from public.coach_tag_types') = 2, 'coach saves own tags');
+select public.save_my_tag_types($$[
+  {"id":"skott","label":"Skott","shortcut":"p","color":"#2f7bff","before_sec":6,"after_sec":3},
+  {"id":"pass-bakom","label":"Pass bakom mål","shortcut":"s","color":"#22c55e","before_sec":8,"after_sec":4}
+]$$::jsonb);
+select t.check((select shortcut from public.coach_tag_types where id = 'skott') = 'p', 'swapping two shortcuts works');
+select t.check((select sort_order from public.coach_tag_types where id = 'pass-bakom') = 1, 'order is kept');
+select t.denied($$select public.save_my_tag_types('[{"id":"x","label":"X","shortcut":"f","color":"#000000","before_sec":1,"after_sec":1}]'::jsonb)$$,
+  'F is reserved for fast-forward');
+select t.check(t.count('select * from public.coach_tag_types') = 2, 'a rejected save changes nothing');
+select t.denied($$insert into public.coach_tag_types (coach_id, id, label, shortcut, color)
+  values ('bbbbbbbb-0000-0000-0000-000000000002', 'x', 'X', 'x', '#000000')$$, 'coach cannot create tags for another coach');
+reset role;
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+select t.check(t.count('select * from public.coach_tag_types') = 0, 'coach B sees none of coach A''s tags');
+select public.save_my_tag_types('[]'::jsonb);
+reset role;
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+select t.check(t.count('select * from public.coach_tag_types') = 2, 'coach B clearing own list leaves coach A''s alone');
+reset role;
+set role anon;
+select t.denied('select * from public.coach_tag_types', 'anonymous users cannot read tags');
+select t.denied($$select public.save_my_tag_types('[]'::jsonb)$$, 'anonymous users cannot save tags');
+reset role;
+
 \echo 'ALL RLS TESTS PASSED'

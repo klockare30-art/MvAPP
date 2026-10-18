@@ -33,3 +33,5 @@ export const listTeams = impl.listTeams;
 export const saveTeam = impl.saveTeam;
 export const deleteTeam = impl.deleteTeam;
 export const deleteVideos = impl.deleteVideos;
+export const loadTagTypes = impl.loadTagTypes;
+export const saveTagTypes = impl.saveTagTypes;

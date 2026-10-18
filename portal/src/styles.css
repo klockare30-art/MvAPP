@@ -952,3 +952,65 @@ kbd {
 .tagList li.playing {
   outline: 2px solid var(--yellow);
 }
+
+.tagTypeTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.tagTypeRow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 72px 86px 86px 150px;
+  gap: 0.5rem;
+  align-items: center;
+}
+.tagTypeRow.head {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.tagTypeRow input {
+  min-height: 44px;
+  padding: 0.4rem 0.6rem;
+  min-width: 0;
+}
+.tagTypeRow input[type='color'] {
+  padding: 4px;
+  height: 44px;
+  width: 56px;
+  cursor: pointer;
+}
+.keyInput {
+  text-align: center;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.rowActions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.panelActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.spacer {
+  flex: 1;
+}
+@media (max-width: 700px) {
+  .tagTypeRow {
+    grid-template-columns: 48px minmax(0, 1fr) 56px;
+  }
+  .tagTypeRow.head span:nth-child(n + 4) {
+    display: none;
+  }
+  .tagTypeRow input[type='number'] {
+    grid-column: span 1;
+  }
+  .rowActions {
+    grid-column: 1 / -1;
+  }
+}

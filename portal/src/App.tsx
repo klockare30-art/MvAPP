@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { Admin } from './Admin';
+import { ControlPanel } from './ControlPanel';
 import { currentUser, isPortalConfigured, onUserChange, type PortalUser } from './auth';
 import { IS_DEMO } from './demo';
 import { Library } from './Library';
@@ -59,6 +60,8 @@ export function App() {
     const match = /^#\/video\/([0-9a-f-]{36})$/.exec(hash);
     page = hash === '#/admin' ? (
       <Admin />
+    ) : hash === '#/kontrollpanel' ? (
+      <ControlPanel />
     ) : hash === '#/lag' ? (
       <Teams />
     ) : hash === '#/tagga' ? (

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { addGoaltender, becomeCoach, clipPortalApi, listClubs, listMyGoaltenders, listTeams, myCoachAccount } from './api';
+import { addGoaltender, becomeCoach, clipPortalApi, listClubs, listMyGoaltenders, listTeams, loadTagTypes, myCoachAccount } from './api';
 import { GoalieForm, TeamOptions } from './GoalieForm';
 import { exportClip, inspectMatchFile, type MatchFileInfo } from './clipExport';
 import { formatBytes, localDateIso } from './format';
@@ -9,8 +9,7 @@ import {
   clipFileName,
   clipRange,
   countByType,
-  DEFAULT_AFTER_SEC,
-  DEFAULT_BEFORE_SEC,
+  DEFAULT_TAG_TYPES,
   chosenTags,
   formatClock,
   goaliesInTeam,
@@ -21,10 +20,10 @@ import {
   sortTags,
   SPEEDS,
   storageKeyFor,
-  TAG_TYPES,
   tagTypeById,
   tagTypeForKey,
   type MatchTag,
+  type TagType,
 } from './tagging';
 
 type PublishState = { kind: 'working' } | { kind: 'error'; message: string };
@@ -58,8 +57,7 @@ export function MatchTagger() {
   const [tags, setTags] = useState<MatchTag[]>([]);
   const [speed, setSpeed] = useState<number>(8);
   const [fast, setFast] = useState(false);
-  const [before, setBefore] = useState(DEFAULT_BEFORE_SEC);
-  const [after, setAfter] = useState(DEFAULT_AFTER_SEC);
+  const [tagTypes, setTagTypes] = useState<readonly TagType[]>(DEFAULT_TAG_TYPES);
   const [clips, setClips] = useState<Record<string, ClipState>>({});
   const [lastTag, setLastTag] = useState<string | null>(null);
   const [marked, setMarked] = useState<Set<string>>(() => new Set());
@@ -107,6 +105,10 @@ export function MatchTagger() {
 
   useEffect(() => {
     void loadCoach();
+    // The coach's own tags from the control panel (default list if none, or if not set up yet).
+    loadTagTypes()
+      .then((t) => t && setTagTypes(t))
+      .catch(() => undefined);
   }, [loadCoach]);
 
   const storageKey = file ? storageKeyFor(file) : null;
@@ -140,14 +142,14 @@ export function MatchTagger() {
   );
 
   const addTag = useCallback(
-    (type: string) => {
+    (type: TagType) => {
       const v = video.current;
       if (!v) return;
-      const tag = newTag(type, v.currentTime, before, after);
+      const tag = newTag(type.id, v.currentTime, type.beforeSec, type.afterSec);
       updateTags((prev) => [...prev, tag]);
       setLastTag(tag.id);
     },
-    [before, after, updateTags],
+    [updateTags],
   );
 
   const startFast = useCallback(() => {
@@ -241,10 +243,10 @@ export function MatchTagger() {
         e.preventDefault();
         v.currentTime = v.currentTime + 5;
       } else {
-        const type = tagTypeForKey(e.key);
+        const type = tagTypeForKey(tagTypes, e.key);
         if (type) {
           e.preventDefault();
-          addTag(type.id);
+          addTag(type);
         }
       }
     };
@@ -264,7 +266,7 @@ export function MatchTagger() {
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
     };
-  }, [url, startFast, stopFast, startRewind, stopRewind, addTag]);
+  }, [url, startFast, stopFast, startRewind, stopRewind, addTag, tagTypes]);
 
   useEffect(() => () => {
     if (url) URL.revokeObjectURL(url);
@@ -280,7 +282,7 @@ export function MatchTagger() {
       setClips((c) => ({ ...c, [tag.id]: { kind: 'done', url: clipUrl, startSec: clip.startSec, endSec: clip.endSec, size: clip.blob.size } }));
       const a = document.createElement('a');
       a.href = clipUrl;
-      a.download = clipFileName(tag);
+      a.download = clipFileName(tagTypes, tag);
       a.click();
     } catch (e) {
       setClips((c) => ({ ...c, [tag.id]: { kind: 'error', message: e instanceof Error ? e.message : String(e) } }));
@@ -352,7 +354,7 @@ export function MatchTagger() {
         videoId: crypto.randomUUID(),
         goaltenderId: goalie.id,
         blob: clip.blob,
-        tagLabel: tagTypeById(tag.type).label,
+        tagLabel: tagTypeById(tagTypes, tag.type).label,
         matchTitle,
         teamName: teams.find((t) => t.id === goalie.team_id)?.name ?? null,
         matchDate,
@@ -390,7 +392,7 @@ export function MatchTagger() {
     return probe.canPlayType(`video/mp4; codecs="${info.codecString}"`) !== '';
   }, [info]);
 
-  const counts = countByType(tags);
+  const counts = countByType(tagTypes, tags);
 
   return (
     <div className="page">
@@ -458,7 +460,7 @@ export function MatchTagger() {
                         <strong>
                           {show.i + 1} / {show.ids.length}
                         </strong>{' '}
-                        · {tagTypeById(showTag.type).label} {formatClock(showTag.atSec)}
+                        · {tagTypeById(tagTypes, showTag.type).label} {formatClock(showTag.atSec)}
                         {goalieFor(showTag) ? ` · ${goalieLabel(goalieFor(showTag)!)}` : ''}
                       </span>
                       <span className="showButtons">
@@ -482,7 +484,7 @@ export function MatchTagger() {
                   ) : null}
                 </div>
 
-                <TagTimeline tags={tags} duration={duration} onSeek={(s) => seek(s)} />
+                <TagTimeline types={tagTypes} tags={tags} duration={duration} onSeek={(s) => seek(s)} />
 
                 <div className="controls">
                   <button
@@ -521,19 +523,20 @@ export function MatchTagger() {
                 </p>
 
                 <div className="tagButtons">
-                  {TAG_TYPES.map((t) => (
-                    <button key={t.id} className="btn tagBtn" style={{ borderColor: t.color }} onClick={() => addTag(t.id)}>
+                  {tagTypes.map((t) => (
+                    <button key={t.id} className="btn tagBtn" style={{ borderColor: t.color }} onClick={() => addTag(t)}>
                       <span className="tagDot" style={{ background: t.color }} />
                       {t.label}
                       <kbd>{t.key.toUpperCase()}</kbd>
                     </button>
                   ))}
                 </div>
-                <div className="marginRow small muted">
-                  Nya taggar: klipp
-                  <input type="number" min={0} max={120} value={before} onChange={(e) => setBefore(Number(e.target.value))} /> s före och
-                  <input type="number" min={0} max={120} value={after} onChange={(e) => setAfter(Number(e.target.value))} /> s efter
-                </div>
+                <p className="small muted">
+                  Klipplängden sätts per tagg och kan ändras på varje tagg i listan.{' '}
+                  <a className="link" href="#/kontrollpanel">
+                    Ändra taggar och kortkommandon i kontrollpanelen
+                  </a>
+                </p>
               </section>
 
               <section className="tagList card">
@@ -607,7 +610,7 @@ export function MatchTagger() {
                 )}
                 <ul>
                   {tags.map((t) => {
-                    const type = tagTypeById(t.type);
+                    const type = tagTypeById(tagTypes, t.type);
                     const r = clipRange(t, duration);
                     const st = clips[t.id];
                     const pub = publishing[t.id];
@@ -677,7 +680,7 @@ export function MatchTagger() {
                         {st?.kind === 'done' ? (
                           <div className="small muted">
                             Sparat {formatClock(st.startSec)}–{formatClock(st.endSec)} ({formatBytes(st.size)}).{' '}
-                            <a href={st.url} download={clipFileName(t)}>
+                            <a href={st.url} download={clipFileName(tagTypes, t)}>
                               Ladda ner igen
                             </a>
                           </div>
@@ -696,7 +699,7 @@ export function MatchTagger() {
   );
 }
 
-function TagTimeline({ tags, duration, onSeek }: { tags: MatchTag[]; duration: number; onSeek: (sec: number) => void }) {
+function TagTimeline({ types: tagTypes, tags, duration, onSeek }: { types: readonly TagType[]; tags: MatchTag[]; duration: number; onSeek: (sec: number) => void }) {
   if (!(duration > 0)) return null;
   return (
     <div
@@ -711,8 +714,8 @@ function TagTimeline({ tags, duration, onSeek }: { tags: MatchTag[]; duration: n
         <span
           key={t.id}
           className="tagTick"
-          title={`${tagTypeById(t.type).label} ${formatClock(t.atSec)}`}
-          style={{ left: `${(t.atSec / duration) * 100}%`, background: tagTypeById(t.type).color }}
+          title={`${tagTypeById(tagTypes, t.type).label} ${formatClock(t.atSec)}`}
+          style={{ left: `${(t.atSec / duration) * 100}%`, background: tagTypeById(tagTypes, t.type).color }}
         />
       ))}
     </div>

@@ -82,6 +82,9 @@ export function Library({ email, userId }: { email: string; userId: string }) {
         <div className="topActions">
           {coach || admin ? (
             <>
+              <a className="btn" href="#/kontrollpanel">
+                Kontrollpanel
+              </a>
               <a className="btn" href="#/lag">
                 Mina lag
               </a>

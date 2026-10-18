@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { TagType } from './tagging';
 import type { ClipPortalApi, Club, CoachAccount, CoachGoaltender, GoaltenderInput, Team } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
@@ -309,4 +310,33 @@ export async function deleteVideos(videos: { id: string; storage_path: string }[
   fail(error);
   const { error: rmErr } = await client().storage.from('videos').remove(videos.map((v) => v.storage_path));
   if (rmErr) throw new Error(`Klippen är borttagna för målvakten, men filerna kunde inte raderas: ${rmErr.message}`);
+}
+
+/** The coach's own tag list; null = not set yet (the portal then uses the default list). */
+export async function loadTagTypes(): Promise<TagType[] | null> {
+  const { data, error } = await client()
+    .from('coach_tag_types')
+    .select('id, label, shortcut, color, before_sec, after_sec')
+    .order('sort_order');
+  fail(error);
+  const rows = (data ?? []) as { id: string; label: string; shortcut: string; color: string; before_sec: number; after_sec: number }[];
+  return rows.length === 0
+    ? null
+    : rows.map((r) => ({ id: r.id, label: r.label, key: r.shortcut, color: r.color, beforeSec: r.before_sec, afterSec: r.after_sec }));
+}
+
+/** Replaces the whole list in one transaction (order = list order). */
+export async function saveTagTypes(types: TagType[]): Promise<void> {
+  const { error } = await client().rpc('save_my_tag_types', {
+    p_types: types.map((t) => ({
+      id: t.id,
+      label: t.label.trim(),
+      shortcut: t.key.toLowerCase(),
+      color: t.color,
+      before_sec: t.beforeSec,
+      after_sec: t.afterSec,
+    })),
+  });
+  if (error?.code === '23505') throw new Error('Två taggar har samma namn eller tangent.');
+  fail(error);
 }

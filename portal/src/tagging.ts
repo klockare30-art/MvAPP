@@ -6,16 +6,71 @@ export interface TagType {
   /** Keyboard shortcut (lower case). */
   key: string;
   color: string;
+  /** Default clip margins for this tag. */
+  beforeSec: number;
+  afterSec: number;
 }
 
-export const TAG_TYPES: readonly TagType[] = [
-  { id: 'skott', label: 'Skott', key: 's', color: '#2f7bff' },
-  { id: 'retur', label: 'Retur', key: 'r', color: '#f97316' },
-  { id: 'ingang', label: 'Ingång', key: 'i', color: '#a855f7' },
-  { id: 'scanning', label: 'Scanning', key: 'c', color: '#22c55e' },
-  { id: 'mal', label: 'Mål', key: 'm', color: '#ef3b3b' },
-  { id: 'ovrigt', label: 'Övrigt', key: 'o', color: '#facc15' },
+const tt = (id: string, label: string, key: string, color: string): TagType => ({ id, label, key, color, beforeSec: 6, afterSec: 3 });
+
+/** Used until the coach saves an own list in the control panel. */
+export const DEFAULT_TAG_TYPES: readonly TagType[] = [
+  tt('skott', 'Skott', 's', '#2f7bff'),
+  tt('retur', 'Retur', 'r', '#f97316'),
+  tt('ingang', 'Ingång', 'i', '#a855f7'),
+  tt('scanning', 'Scanning', 'c', '#22c55e'),
+  tt('mal', 'Mål', 'm', '#ef3b3b'),
+  tt('ovrigt', 'Övrigt', 'o', '#facc15'),
 ];
+
+/** Keys the tagger uses for itself: F/B = fast-forward/rewind. */
+export const RESERVED_KEYS = ['f', 'b'];
+const KEY = /^[a-z0-9åäö]$/;
+const COLOR = /^#[0-9a-fA-F]{6}$/;
+export const MAX_TAG_TYPES = 30;
+
+/** Swedish reason the list cannot be saved (null = OK). Mirrors the database checks. */
+export function tagTypesProblem(types: TagType[]): string | null {
+  if (types.length === 0) return 'Lägg till minst en tagg.';
+  if (types.length > MAX_TAG_TYPES) return `Högst ${MAX_TAG_TYPES} taggar.`;
+  const keys = new Set<string>();
+  const labels = new Set<string>();
+  for (const t of types) {
+    const label = t.label.trim();
+    const key = t.key.toLowerCase();
+    if (!label) return 'Varje tagg behöver ett namn.';
+    if (label.length > 30) return `"${label}" är för långt (högst 30 tecken).`;
+    if (!KEY.test(key)) return `"${label}": kortkommandot ska vara en bokstav eller siffra.`;
+    if (RESERVED_KEYS.includes(key)) return `"${label}": ${key.toUpperCase()} används för snabbspolning. Välj en annan tangent.`;
+    if (keys.has(key)) return `Tangenten ${key.toUpperCase()} används av flera taggar.`;
+    if (labels.has(label.toLowerCase())) return `Namnet "${label}" finns redan.`;
+    if (!COLOR.test(t.color)) return `"${label}": ogiltig färg.`;
+    for (const v of [t.beforeSec, t.afterSec]) {
+      if (!Number.isInteger(v) || v < 0 || v > 60) return `"${label}": före/efter ska vara 0–60 sekunder.`;
+    }
+    keys.add(key);
+    labels.add(label.toLowerCase());
+  }
+  return null;
+}
+
+/** Stable id for a new tag type, e.g. "Pass bakom mål" → "pass-bakom-mal". */
+export function tagTypeId(label: string, taken: string[]): string {
+  const base =
+    label
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 32) || 'tagg';
+  let id = base;
+  for (let n = 2; taken.includes(id); n++) id = `${base}-${n}`;
+  return id;
+}
+
+/** Shown for tags whose type was removed in the control panel. */
+const removedType = (id: string): TagType => ({ id, label: 'Borttagen tagg', key: '', color: '#7d8ba8', beforeSec: 6, afterSec: 3 });
 
 export interface MatchTag {
   id: string;
@@ -36,12 +91,12 @@ export const SPEEDS = [2, 4, 8, 16] as const;
 /** Jump back this much when fast-forward is released: you always react a little late. */
 export const REWIND_ON_RELEASE_SEC = 2;
 
-export function tagTypeById(id: string): TagType {
-  return TAG_TYPES.find((t) => t.id === id) ?? TAG_TYPES[TAG_TYPES.length - 1]!;
+export function tagTypeById(types: readonly TagType[], id: string): TagType {
+  return types.find((t) => t.id === id) ?? removedType(id);
 }
 
-export function tagTypeForKey(key: string): TagType | null {
-  return TAG_TYPES.find((t) => t.key === key.toLowerCase()) ?? null;
+export function tagTypeForKey(types: readonly TagType[], key: string): TagType | null {
+  return types.find((t) => t.key === key.toLowerCase()) ?? null;
 }
 
 export function newTag(type: string, atSec: number, beforeSec = DEFAULT_BEFORE_SEC, afterSec = DEFAULT_AFTER_SEC): MatchTag {
@@ -70,8 +125,9 @@ export function formatClock(sec: number): string {
 }
 
 /** "Skott_1-24-13.mp4" – safe on Windows (no colons). */
-export function clipFileName(tag: MatchTag): string {
-  return `${tagTypeById(tag.type).label}_${formatClock(tag.atSec).replace(/:/g, '-')}.mp4`;
+export function clipFileName(types: readonly TagType[], tag: MatchTag): string {
+  const label = tagTypeById(types, tag.type).label.replace(/[^\p{L}\p{N}]+/gu, '-');
+  return `${label}_${formatClock(tag.atSec).replace(/:/g, '-')}.mp4`;
 }
 
 /** Tags are kept per match file in the browser, so a reload does not lose work. */
@@ -96,8 +152,13 @@ export function parseStoredTags(raw: string | null): MatchTag[] {
   }
 }
 
-export function countByType(tags: MatchTag[]): { type: TagType; count: number }[] {
-  return TAG_TYPES.map((type) => ({ type, count: tags.filter((t) => t.type === type.id).length })).filter((c) => c.count > 0);
+export function countByType(types: readonly TagType[], tags: MatchTag[]): { type: TagType; count: number }[] {
+  const known = types.map((type) => ({ type, count: tags.filter((t) => t.type === type.id).length }));
+  const removed = [...new Set(tags.filter((t) => !types.some((x) => x.id === t.type)).map((t) => t.type))].map((id) => ({
+    type: removedType(id),
+    count: tags.filter((t) => t.type === id).length,
+  }));
+  return [...known, ...removed].filter((c) => c.count > 0);
 }
 
 /** Pseudo team id for goaltenders that are not in any team. */

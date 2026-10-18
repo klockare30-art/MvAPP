@@ -77,6 +77,9 @@ export function Teams() {
           </div>
         </div>
         <div className="topActions">
+          <a className="btn" href="#/kontrollpanel">
+            Kontrollpanel
+          </a>
           <a className="btn" href="#/tagga">
             Tagga match
           </a>

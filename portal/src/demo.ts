@@ -3,6 +3,7 @@
  * An in-browser stand-in for Supabase with example data, so the portal can be
  * tried without any account or server. Never enabled in the real build.
  */
+import type { TagType } from './tagging';
 import type { ClipPortalApi, Club, CoachAccount, CoachGoaltender, GoaltenderInput, Team } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
@@ -88,6 +89,8 @@ let demoCoaches: AdminCoach[] = [
   { id: 'c3', email: 'gammal@exempel.se', name: 'Per Ek', status: 'active', plan_id: 'start', paid_until: day(3, 12, 0).slice(0, 10),
     created_at: day(200, 9, 0), goaltender_count: 4, video_count: 31, storage_bytes: 0.9 * 1024 ** 3 },
 ];
+
+let demoTagTypes: TagType[] | null = null;
 
 // Clips "published" from the tagging page in the demo live only in this tab.
 const demoUploads = new Map<string, string>();
@@ -176,6 +179,14 @@ export const demoApi = {
     const ids = new Set(list.map((v) => v.id));
     for (let i = videos.length - 1; i >= 0; i--) if (ids.has(videos[i]!.id)) videos.splice(i, 1);
     for (const v of list) demoUploads.delete(v.storage_path);
+  },
+  async loadTagTypes() {
+    await wait();
+    return demoTagTypes;
+  },
+  async saveTagTypes(types: TagType[]) {
+    await wait();
+    demoTagTypes = types.map((t) => ({ ...t, key: t.key.toLowerCase(), label: t.label.trim() }));
   },
   async myCoachAccount() {
     await wait();
