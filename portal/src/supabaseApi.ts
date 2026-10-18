@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { ClipPortalApi, CoachAccount, CoachGoaltender } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 function client() {
@@ -135,3 +136,88 @@ export async function isCoach(): Promise<boolean> {
   fail(error);
   return (data ?? []).length > 0;
 }
+
+// ---------------------------------------------------------------------------
+// Coach (match tagging → publish clips)
+// ---------------------------------------------------------------------------
+
+async function uid(): Promise<string> {
+  const { data, error } = await client().auth.getUser();
+  fail(error);
+  if (!data.user) throw new Error('Inte inloggad.');
+  return data.user.id;
+}
+
+/** null when the user has no coach profile yet. */
+export async function myCoachAccount(): Promise<CoachAccount | null> {
+  const { data, error } = await client().rpc('my_coach_account');
+  fail(error);
+  const r = (data as Record<string, unknown>[] | null)?.[0];
+  if (!r) return null;
+  const num = (v: unknown) => (v == null ? null : Number(v));
+  return {
+    status: r.status as CoachAccount['status'],
+    planName: (r.plan_name as string | null) ?? null,
+    paidUntil: (r.paid_until as string | null) ?? null,
+    isActive: r.is_active === true,
+    maxStorageBytes: num(r.max_storage_bytes),
+    usedStorageBytes: num(r.used_storage_bytes) ?? 0,
+    maxGoaltenders: num(r.max_goaltenders),
+    goaltenderCount: num(r.goaltender_count) ?? 0,
+  };
+}
+
+/** Creates the coach profile (status pending until the admin approves). */
+export async function becomeCoach(name: string): Promise<void> {
+  const { error } = await client().from('coaches').upsert({ id: await uid(), name }, { onConflict: 'id', ignoreDuplicates: true });
+  fail(error);
+}
+
+export async function listMyGoaltenders(): Promise<CoachGoaltender[]> {
+  const { data, error } = await client()
+    .from('goaltenders')
+    .select('id, first_name, last_name, jersey_number, email')
+    .eq('coach_id', await uid())
+    .is('access_revoked_at', null)
+    .order('first_name');
+  fail(error);
+  return (data ?? []) as CoachGoaltender[];
+}
+
+/** Adds a goaltender with recorded consent (the coach confirms consent in the form). */
+export async function addGoaltender(g: { firstName: string; lastName: string; jerseyNumber: number | null; email: string }): Promise<CoachGoaltender> {
+  const row = {
+    id: crypto.randomUUID(),
+    coach_id: await uid(),
+    first_name: g.firstName.trim(),
+    last_name: g.lastName.trim(),
+    jersey_number: g.jerseyNumber,
+    email: g.email.trim(),
+    consent_confirmed_at: new Date().toISOString(),
+  };
+  const { error } = await client().from('goaltenders').insert(row);
+  if (error?.code === '42501') {
+    throw new Error('Målvakten kunde inte läggas till: kontot är inte aktivt eller nivåns gräns för antal målvakter är nådd.');
+  }
+  fail(error);
+  return { id: row.id, first_name: row.first_name, last_name: row.last_name, jersey_number: row.jersey_number, email: row.email };
+}
+
+export const clipPortalApi: ClipPortalApi = {
+  userId: uid,
+  async uploadFile(path, blob) {
+    const bucket = client().storage.from('videos');
+    const { data, error } = await bucket.createSignedUploadUrl(path);
+    if (error || !data) throw new Error(`Uppladdningen kunde inte förberedas: ${error?.message ?? 'okänt fel'}`);
+    const { error: upErr } = await bucket.uploadToSignedUrl(path, data.token, blob, { contentType: 'video/mp4' });
+    if (upErr) throw new Error(`Uppladdningen misslyckades: ${upErr.message}`);
+  },
+  async insertVideo(row) {
+    const { error } = await client().from('published_videos').insert(row);
+    if (error) throw new Error(`Klippet kunde inte registreras: ${error.message}`);
+  },
+  async removeObject(path) {
+    const { error } = await client().storage.from('videos').remove([path]);
+    fail(error);
+  },
+};

@@ -24,6 +24,8 @@ export interface MatchTag {
   atSec: number;
   beforeSec: number;
   afterSec: number;
+  /** Set once the clip is published: who it went to (shown after a reload, prevents double uploads). */
+  publishedTo?: string;
 }
 
 export const DEFAULT_BEFORE_SEC = 6;

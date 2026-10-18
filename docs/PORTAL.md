@@ -126,12 +126,20 @@ EXPO_PUBLIC_PORTAL_URL=https://<din portal>
 
 Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas från datorn och laddas **inte** upp.
 
-- **Snabbspola:** håll knappen eller tangenten **F**. Välj 2x, 4x, 8x eller 16x. När du släpper går videon tillbaka till normal fart, 2 s bakåt.
+- **Snabbspola:** håll knappen eller tangenten **F** för framåt och **B** för bakåt. Välj 2x, 4x, 8x eller 16x. När du släpper framåt går videon tillbaka till normal fart, 2 s bakåt.
+  - Bakåt fungerar genom snabba hopp, eftersom webbläsare inte kan spela video baklänges. Det kan därför se ryckigare ut än framåt.
 - **Tagga:** S skott, R retur, I ingång, C scanning, M mål, O övrigt. Klicka också går. Varje tagg blir ett klipp, som standard 6 s före och 3 s efter. Marginalerna går att ändra per tagg.
-- **Spara klipp:** klipps ut utan omkodning (samma kvalitet, under 1 s per klipp) och laddas ner till datorn.
+- **Till målvakt:** välj målvakt, matchnamn och datum. **Till Erik** eller **Skicka alla till Erik** klipper ut klippet och laddar upp det. Klippet hamnar hos målvakten i portalen med taggen som fokusområde.
+  - Klippningen sker utan omkodning: samma kvalitet, under 1 s per klipp.
+  - Bara klippet laddas upp, aldrig hela matchen.
   - Klippet börjar vid närmaste nyckelbildruta före vald start. Hur tätt de ligger visas när filen öppnas.
+- **Krav för uppladdning:**
+  - en godkänd tränarprofil. Klicka *Skapa tränarprofil* och godkänn den sedan under Admin.
+  - en målvakt med e-post och registrerat samtycke. Målvakten kan läggas till direkt på sidan.
+  - Samma säkerhetsregler och lagringsgränser gäller som för iPaden.
+- **Ladda ner:** sparar klippet på datorn i stället.
 - Taggarna sparas i webbläsaren per fil, så de finns kvar om sidan laddas om på samma dator.
-- **Inte byggt än:** att ladda upp klippen direkt till en målvakt. I dag laddas klippen ner till datorn.
+- Målvakter som läggs till i portalen finns inte automatiskt i iPad-appen ännu (ingen synk mellan dem).
 
 Verifierat:
 - Filer på 5 min och 10 min (1080p H.264 med och utan B-bilder, AAC-ljud) och 2 h (2,8 GB).

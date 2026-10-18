@@ -3,6 +3,7 @@
  * An in-browser stand-in for Supabase with example data, so the portal can be
  * tried without any account or server. Never enabled in the real build.
  */
+import type { ClipPortalApi, CoachAccount, CoachGoaltender } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === '1';
@@ -88,6 +89,16 @@ let demoCoaches: AdminCoach[] = [
     created_at: day(200, 9, 0), goaltender_count: 4, video_count: 31, storage_bytes: 0.9 * 1024 ** 3 },
 ];
 
+// Clips "published" from the tagging page in the demo live only in this tab.
+const demoUploads = new Map<string, string>();
+let demoCoachGoalies: CoachGoaltender[] = [
+  { id: GOALIE_ID, first_name: 'Erik', last_name: 'Andersson', jersey_number: 30, email: 'erik@exempel.se' },
+];
+const demoAccount: CoachAccount = {
+  status: 'active', planName: 'Plus', paidUntil: null, isActive: true,
+  maxStorageBytes: 10 * 1024 ** 3, usedStorageBytes: 0, maxGoaltenders: 30, goaltenderCount: 1,
+};
+
 /** Same functions as supabaseApi.ts, backed by the example data above. */
 export const demoApi = {
   async claimProfiles() {
@@ -106,8 +117,10 @@ export const demoApi = {
     await wait();
     return videos.find((v) => v.id === id) ?? null;
   },
-  async signedVideoUrl() {
+  async signedVideoUrl(path?: string) {
     await wait();
+    const uploaded = path ? demoUploads.get(path) : undefined;
+    if (uploaded) return uploaded;
     // The demo clip is a test pattern with a frame counter (makes frame stepping visible).
     const probe = document.createElement('video');
     return probe.canPlayType('video/mp4; codecs="avc1.42E01E"') ? 'demo/demo.mp4' : 'demo/demo.webm';
@@ -145,6 +158,42 @@ export const demoApi = {
     await wait();
     return true;
   },
+  async myCoachAccount() {
+    await wait();
+    return { ...demoAccount, goaltenderCount: demoCoachGoalies.length };
+  },
+  async becomeCoach(_name: string) {
+    await wait();
+  },
+  async listMyGoaltenders() {
+    await wait();
+    return demoCoachGoalies;
+  },
+  async addGoaltender(g: { firstName: string; lastName: string; jerseyNumber: number | null; email: string }) {
+    await wait();
+    const goalie = { id: `demo-${Date.now()}`, first_name: g.firstName, last_name: g.lastName, jersey_number: g.jerseyNumber, email: g.email };
+    demoCoachGoalies = [...demoCoachGoalies, goalie];
+    return goalie;
+  },
+  clipPortalApi: {
+    userId: async () => COACH_ID,
+    async uploadFile(path: string, blob: Blob) {
+      await wait(400);
+      demoUploads.set(path, URL.createObjectURL(blob));
+    },
+    async insertVideo(row) {
+      await wait();
+      videos.unshift({
+        id: row.id, coach_id: row.coach_id, goaltender_id: row.goaltender_id, storage_path: row.storage_path,
+        focus_area: row.focus_area, exercise: row.exercise, session_title: row.session_title, team_name: row.team_name,
+        recorded_at: row.recorded_at, duration_ms: row.duration_ms, frame_rate: row.frame_rate, coach_note: row.coach_note,
+        published_at: new Date().toISOString(),
+      });
+    },
+    async removeObject(path: string) {
+      demoUploads.delete(path);
+    },
+  } satisfies ClipPortalApi,
   async adminListCoaches() {
     await wait();
     return demoCoaches;
