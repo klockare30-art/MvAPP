@@ -243,11 +243,17 @@ export async function listClubs(): Promise<Club[]> {
   return (data ?? []) as Club[];
 }
 
-export async function saveClub(club: { id?: string; name: string }): Promise<void> {
-  const { error } = club.id
-    ? await client().from('clubs').update({ name: club.name.trim() }).eq('id', club.id)
-    : await client().from('clubs').insert({ name: club.name.trim() });
+/** Creates or renames a club; returns its id. */
+export async function saveClub(club: { id?: string; name: string }): Promise<string> {
+  if (club.id) {
+    const { error } = await client().from('clubs').update({ name: club.name.trim() }).eq('id', club.id);
+    fail(error);
+    return club.id;
+  }
+  const id = crypto.randomUUID();
+  const { error } = await client().from('clubs').insert({ id, name: club.name.trim() });
   fail(error);
+  return id;
 }
 
 export async function deleteClub(id: string): Promise<void> {

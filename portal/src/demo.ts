@@ -212,9 +212,11 @@ export const demoApi = {
   },
   async saveClub(club: { id?: string; name: string }) {
     await wait();
+    const id = club.id ?? `club-${Date.now()}`;
     demoClubs = club.id
       ? demoClubs.map((c) => (c.id === club.id ? { ...c, name: club.name.trim() } : c))
-      : [...demoClubs, { id: `club-${Date.now()}`, name: club.name.trim() }];
+      : [...demoClubs, { id, name: club.name.trim() }];
+    return id;
   },
   async deleteClub(id: string) {
     await wait();

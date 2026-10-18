@@ -88,7 +88,14 @@ export function Teams() {
 
       <main className="content">
         <h1>Klubbar, lag och målvakter</h1>
-        {error ? <p className="error" role="alert">{error}</p> : null}
+        {error ? (
+          <div className="toast error" role="alert">
+            {error}
+            <button className="link small" onClick={() => setError(null)}>
+              Stäng
+            </button>
+          </div>
+        ) : null}
         {data === null && !error ? <div className="spinner" aria-label="Laddar" /> : null}
 
         {data && !data.account ? (
@@ -107,6 +114,8 @@ export function Teams() {
                 {blocker} Du kan bygga upp klubbar och lag redan nu; målvakter kan läggas till när kontot är aktivt.
               </p>
             ) : null}
+
+            <NewTeam clubs={data.clubs} run={run} busy={busy} />
 
             {data.clubs.map((club) => (
               <ClubCard
@@ -174,7 +183,7 @@ function ClubCard(props: {
       <div className="clubHead">
         <input className="clubName" value={name} onChange={(e) => setName(e.target.value)} aria-label="Klubbens namn" />
         {name.trim() && name !== club.name ? (
-          <button className="btn small" onClick={() => void run(() => saveClub({ id: club.id, name }))}>
+          <button className="btn small" onClick={() => void run(async () => { await saveClub({ id: club.id, name }); })}>
             Spara namn
           </button>
         ) : null}
@@ -357,5 +366,67 @@ function GoalieList(props: { goalies: CoachGoaltender[]; clubs: Club[]; teams: T
         ),
       )}
     </ul>
+  );
+}
+
+/** Always-visible "new team" form: pick a club or type a new one (no club needed beforehand). */
+function NewTeam(props: { clubs: Club[]; run: Run; busy: boolean }) {
+  const NEW = '__new__';
+  const [clubId, setClubId] = useState(props.clubs[0]?.id ?? NEW);
+  const [clubName, setClubName] = useState('');
+  const [name, setName] = useState('');
+  const [season, setSeason] = useState('');
+  const choice = props.clubs.some((c) => c.id === clubId) ? clubId : NEW;
+  const valid = name.trim() !== '' && (choice !== NEW || clubName.trim() !== '');
+
+  return (
+    <section className="card newTeam">
+      <h2>Nytt lag</h2>
+      <div className="portalFields">
+        <label className="field">
+          Klubb
+          <select value={choice} onChange={(e) => setClubId(e.target.value)}>
+            {props.clubs.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+            <option value={NEW}>+ Ny klubb…</option>
+          </select>
+        </label>
+        {choice === NEW ? (
+          <label className="field">
+            Klubbens namn
+            <input value={clubName} onChange={(e) => setClubName(e.target.value)} placeholder="t.ex. Djurgårdens IF" />
+          </label>
+        ) : null}
+        <label className="field">
+          Lag
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="t.ex. J18" />
+        </label>
+        <label className="field">
+          Säsong (valfri)
+          <input value={season} onChange={(e) => setSeason(e.target.value)} placeholder="t.ex. 2026/27" />
+        </label>
+      </div>
+      <div className="adminActions">
+        <button
+          className="btn primary"
+          disabled={props.busy || !valid}
+          onClick={() =>
+            void props.run(async () => {
+              const id = choice === NEW ? await saveClub({ name: clubName }) : choice;
+              await saveTeam({ clubId: id, name, season });
+              setClubId(id);
+              setClubName('');
+              setName('');
+              setSeason('');
+            })
+          }
+        >
+          Skapa lag
+        </button>
+      </div>
+    </section>
   );
 }
