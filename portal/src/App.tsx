@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { Admin } from './Admin';
 import { currentUser, isPortalConfigured, onUserChange, type PortalUser } from './auth';
@@ -6,6 +6,9 @@ import { IS_DEMO } from './demo';
 import { Library } from './Library';
 import { Login } from './Login';
 import { VideoView } from './VideoView';
+
+// The tagging tool pulls in the MP4 library; load it only for coaches who open it.
+const MatchTagger = lazy(() => import('./MatchTagger').then((m) => ({ default: m.MatchTagger })));
 
 /** Minimal hash routing: "#/" library, "#/video/<id>" player (keeps the back button working). */
 function useHashRoute(): string {
@@ -55,6 +58,10 @@ export function App() {
     const match = /^#\/video\/([0-9a-f-]{36})$/.exec(hash);
     page = hash === '#/admin' ? (
       <Admin />
+    ) : hash === '#/tagga' ? (
+      <Suspense fallback={<main className="center"><div className="spinner" aria-label="Laddar" /></main>}>
+        <MatchTagger />
+      </Suspense>
     ) : match?.[1] ? (
       <VideoView videoId={match[1]} userId={user.id} />
     ) : (

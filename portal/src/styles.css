@@ -517,3 +517,151 @@ input[type='date'] {
   background: rgba(239, 59, 59, 0.2);
   color: #ff8080;
 }
+
+.filePick {
+  position: relative;
+  align-self: flex-start;
+}
+.filePick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.fileInfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.tagLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.tagPlayer .videoBox {
+  background: #000;
+  border-radius: 14px;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.tagPlayer video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.tagTimeline {
+  position: relative;
+  height: 22px;
+  margin-top: 0.5rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.tagTick {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+}
+.ffBtn {
+  flex: 1 1 260px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.ffBtn.on {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.center-text {
+  text-align: center;
+  margin: 0 0 0.75rem;
+}
+.tagButtons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+.tagBtn {
+  gap: 0.5rem;
+  border-width: 2px;
+}
+.tagDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+kbd {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.marginRow,
+.tagRowEdit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+.marginRow input,
+.tagRowEdit input {
+  width: 4.2rem;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem;
+}
+.tagList {
+  margin: 0;
+}
+.tagList ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.tagList li {
+  background: var(--bg-elev);
+  border-left: 4px solid var(--blue);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+.tagList li.fresh {
+  outline: 1px solid var(--border);
+}
+.tagListHead,
+.tagRowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.tagRowHead strong {
+  flex: 1;
+}
+.tagRowEdit {
+  margin-top: 0.4rem;
+}
+.btn.small {
+  min-height: 40px;
+  padding: 0 0.75rem;
+  margin-left: auto;
+}
+@media (max-width: 900px) {
+  .tagLayout {
+    grid-template-columns: 1fr;
+  }
+}

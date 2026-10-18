@@ -140,6 +140,11 @@ export const demoApi = {
     await wait();
     return false;
   },
+  // Shown in the demo so the tagging tool can be tried (it works fully offline).
+  async isCoach() {
+    await wait();
+    return true;
+  },
   async adminListCoaches() {
     await wait();
     return demoCoaches;

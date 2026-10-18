@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { claimProfiles, isAdmin, loadProfiles, loadVideos } from './api';
+import { claimProfiles, isAdmin, isCoach, loadProfiles, loadVideos } from './api';
 import { filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByDay } from './format';
 import { signOut } from './auth';
 import type { GoaltenderProfile, PublishedVideo } from './types';
@@ -11,6 +11,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
   const [focus, setFocus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
+  const [coach, setCoach] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +29,9 @@ export function Library({ email, userId }: { email: string; userId: string }) {
     })();
     isAdmin()
       .then((a) => !cancelled && setAdmin(a))
+      .catch(() => undefined);
+    isCoach()
+      .then((c) => !cancelled && setCoach(c))
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -53,6 +57,11 @@ export function Library({ email, userId }: { email: string; userId: string }) {
           </div>
         </div>
         <div className="topActions">
+          {coach || admin ? (
+            <a className="btn" href="#/tagga">
+              Tagga match
+            </a>
+          ) : null}
           {admin ? (
             <a className="btn" href="#/admin">
               Admin

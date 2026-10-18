@@ -128,3 +128,10 @@ export async function adminSavePlan(plan: Plan): Promise<void> {
   });
   fail(error);
 }
+
+/** True when the user has a coach account (sees the match tagging tool). */
+export async function isCoach(): Promise<boolean> {
+  const { data, error } = await client().from('coaches').select('id').limit(1);
+  fail(error);
+  return (data ?? []).length > 0;
+}

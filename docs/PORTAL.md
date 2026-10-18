@@ -122,6 +122,25 @@ EXPO_PUBLIC_PORTAL_URL=https://<din portal>
 5. **Kommentarer:** målvakten skriver i portalen. Du läser och svarar via *Kommentarer* i videovyn i appen eller i portalen, där du kan logga in med samma tränarkonto.
 6. **Ta bort:** *Publicerad till …* → *Ta bort* på en video, eller *Ta bort all portaldata* på målvaktens profil (radering på begäran).
 
+## 5. Matchtaggning (test)
+
+Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas från datorn och laddas **inte** upp.
+
+- **Snabbspola:** håll knappen eller tangenten **F**. Välj 2x, 4x, 8x eller 16x. När du släpper går videon tillbaka till normal fart, 2 s bakåt.
+- **Tagga:** S skott, R retur, I ingång, C scanning, M mål, O övrigt. Klicka också går. Varje tagg blir ett klipp, som standard 6 s före och 3 s efter. Marginalerna går att ändra per tagg.
+- **Spara klipp:** klipps ut utan omkodning (samma kvalitet, under 1 s per klipp) och laddas ner till datorn.
+  - Klippet börjar vid närmaste nyckelbildruta före vald start. Hur tätt de ligger visas när filen öppnas.
+- Taggarna sparas i webbläsaren per fil, så de finns kvar om sidan laddas om på samma dator.
+- **Inte byggt än:** att ladda upp klippen direkt till en målvakt. I dag laddas klippen ner till datorn.
+
+Verifierat:
+- Filer på 5 min och 10 min (1080p H.264 med och utan B-bilder, AAC-ljud) och 2 h (2,8 GB).
+- Analysen tar ca 1 s. Ett klipp 1 h 24 min in tas ut på under 1 s.
+- Klippen avkodas felfritt med ffmpeg.
+- Kör själv: `MATCH_FILE=… npx vitest run clipExport` i `portal/`.
+
+**Ej verifierat:** uppspelning och snabbspolning i riktig Chrome/Edge med en verklig matchfil. Testwebbläsaren saknar H.264-uppspelning.
+
 ## Kostnader och begränsningar (kontrollera aktuella villkor)
 
 - **Videostorlek:** 1080p30 H.264 ≈ 60 MB per minut, HEVC ≈ 40 MB per minut.

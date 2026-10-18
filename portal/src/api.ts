@@ -17,3 +17,4 @@ export const adminListCoaches = impl.adminListCoaches;
 export const adminUpdateCoach = impl.adminUpdateCoach;
 export const loadPlans = impl.loadPlans;
 export const adminSavePlan = impl.adminSavePlan;
+export const isCoach = impl.isCoach;
