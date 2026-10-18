@@ -1,4 +1,4 @@
-import { DEMO_USER, IS_DEMO } from './demo';
+import { DEMO_COACH, DEMO_USER, IS_DEMO } from './demo';
 import { supabase } from './supabase';
 
 export interface PortalUser {
@@ -10,21 +10,24 @@ type Listener = (u: PortalUser | null) => void;
 const DEMO_KEY = 'gv-demo-session';
 const demoListeners = new Set<Listener>();
 
+// Demo: an e-mail starting with "tranare" logs in as the coach, anything else as goaltender Erik.
+const demoFor = (role: string | null): PortalUser | null => (role === 'coach' ? DEMO_COACH : role ? DEMO_USER : null);
+
 function demoUser(): PortalUser | null {
   try {
-    return localStorage.getItem(DEMO_KEY) ? DEMO_USER : null;
+    return demoFor(localStorage.getItem(DEMO_KEY));
   } catch {
     return null;
   }
 }
-function setDemo(on: boolean) {
+function setDemo(role: 'coach' | 'goalie' | null) {
   try {
-    if (on) localStorage.setItem(DEMO_KEY, '1');
+    if (role) localStorage.setItem(DEMO_KEY, role);
     else localStorage.removeItem(DEMO_KEY);
   } catch {
     // ignore
   }
-  demoListeners.forEach((l) => l(on ? DEMO_USER : null));
+  demoListeners.forEach((l) => l(demoFor(role)));
 }
 
 export const isPortalConfigured = IS_DEMO || supabase != null;
@@ -57,7 +60,7 @@ export async function sendLoginEmail(email: string): Promise<void> {
 
 export async function verifyCode(email: string, code: string): Promise<void> {
   if (IS_DEMO) {
-    setDemo(true);
+    setDemo(/^tranare/i.test(email.trim()) ? 'coach' : 'goalie');
     return;
   }
   const { error } = await supabase!.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
@@ -65,6 +68,6 @@ export async function verifyCode(email: string, code: string): Promise<void> {
 }
 
 export async function signOut(): Promise<void> {
-  if (IS_DEMO) return setDemo(false);
+  if (IS_DEMO) return setDemo(null);
   await supabase!.auth.signOut();
 }

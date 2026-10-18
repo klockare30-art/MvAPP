@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { bytesToGb, filterByFocus, focusAreaCounts, formatBytes, formatPosition, gbToBytes, groupByDay, sortComments, stepFrame } from '../format';
+import { groupByMatch, bytesToGb, filterByFocus, focusAreaCounts, formatBytes, formatPosition, gbToBytes, groupByDay, sortComments, stepFrame } from '../format';
 import type { PublishedVideo, VideoComment } from '../types';
 
 function v(id: string, focus: string | null, recorded: string): PublishedVideo {
@@ -69,5 +69,18 @@ describe('storage sizes', () => {
   test('GB round-trips for the level editor', () => {
     expect(gbToBytes(1)).toBe(1073741824);
     expect(bytesToGb(gbToBytes(2.5))).toBe(2.5);
+  });
+});
+
+describe('grouping per match', () => {
+  test('clips from the same day and match stay together; other sessions get their own group', () => {
+    const a = { ...v('a', 'Skott', '2026-10-18T19:10:00'), session_title: 'Hemma mot AIK' };
+    const b = { ...v('b', 'Retur', '2026-10-18T19:40:00'), session_title: 'Hemma mot AIK' };
+    const c = { ...v('c', 'Skott', '2026-10-18T10:00:00'), session_title: 'Morgonpass' };
+    const d = { ...v('d', 'Skott', '2026-10-11T19:00:00'), session_title: null };
+    const groups = groupByMatch([a, c, d, b]);
+    expect(groups.map((g) => g.videos.map((x) => x.id))).toEqual([['b', 'a'], ['c'], ['d']]);
+    expect(groups[0]?.title).toContain('Hemma mot AIK');
+    expect(groups[2]?.title).not.toContain('·');
   });
 });

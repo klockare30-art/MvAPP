@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { claimProfiles, isAdmin, isCoach, loadProfiles, loadVideos } from './api';
-import { filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByDay } from './format';
+import { claimProfiles, deleteVideos, isAdmin, isCoach, loadProfiles, loadVideos } from './api';
+import { filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByMatch } from './format';
 import { signOut } from './auth';
 import type { GoaltenderProfile, PublishedVideo } from './types';
 
@@ -39,7 +39,30 @@ export function Library({ email, userId }: { email: string; userId: string }) {
   }, []);
 
   const counts = useMemo(() => focusAreaCounts(videos ?? []), [videos]);
-  const groups = useMemo(() => groupByDay(filterByFocus(videos ?? [], focus)), [videos, focus]);
+  const groups = useMemo(() => groupByMatch(filterByFocus(videos ?? [], focus)), [videos, focus]);
+  const [manage, setManage] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const ownCount = (videos ?? []).filter((v) => v.coach_id === userId).length;
+
+  /** Coach only: removes the given clips (own clips only – the database refuses others). */
+  const remove = async (list: PublishedVideo[], what: string) => {
+    const own = list.filter((v) => v.coach_id === userId);
+    if (own.length === 0) return;
+    const goalies = [...new Set(own.map((v) => goalieName(v.goaltender_id)).filter(Boolean))].join(', ');
+    if (!window.confirm(`Ta bort ${what} (${own.length} klipp${goalies ? ` till ${goalies}` : ''})? Målvakten ser dem inte längre och kommentarerna tas bort. Det går inte att ångra.`)) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteVideos(own);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      const ids = new Set(own.map((v) => v.id));
+      setVideos((prev) => (prev ? prev.filter((v) => !ids.has(v.id)) : prev));
+      setDeleting(false);
+      void loadVideos().then(setVideos).catch(() => undefined);
+    }
+  };
   const me = profiles.find((p) => p.user_id === userId);
   const goalieName = (id: string) => {
     const g = profiles.find((p) => p.id === id);
@@ -106,12 +129,29 @@ export function Library({ email, userId }: { email: string; userId: string }) {
           </div>
         ) : null}
 
+        {ownCount > 0 ? (
+          <div className="manageBar">
+            <button className={`btn ${manage ? 'primary' : ''}`} onClick={() => setManage((m) => !m)}>
+              {manage ? 'Klar' : 'Hantera klipp'}
+            </button>
+            {manage ? <span className="small muted">Ta bort enskilda klipp eller en hel match. Bara klipp du själv har publicerat.</span> : null}
+          </div>
+        ) : null}
+
         {groups.map((g) => (
-          <section key={g.day} className="day">
-            <h2 className="dayTitle">{g.day}</h2>
+          <section key={g.key} className="day">
+            <div className="groupHead">
+              <h2 className="dayTitle">{g.title}</h2>
+              {manage && g.videos.some((v) => v.coach_id === userId) ? (
+                <button className="btn small danger" disabled={deleting} onClick={() => void remove(g.videos, 'hela matchen')}>
+                  Ta bort matchen
+                </button>
+              ) : null}
+            </div>
             <div className="grid">
               {g.videos.map((v) => (
-                <a key={v.id} className="videoCard" href={`#/video/${v.id}`}>
+                <div key={v.id} className="cardWrap">
+                <a className="videoCard" href={`#/video/${v.id}`}>
                   <div className="thumb">
                     <span className="play" aria-hidden>▶</span>
                     <span className="dur">{formatDuration(v.duration_ms)}</span>
@@ -126,6 +166,12 @@ export function Library({ email, userId }: { email: string; userId: string }) {
                     {v.coach_note ? <span className="note">{v.coach_note}</span> : null}
                   </div>
                 </a>
+                {manage && v.coach_id === userId ? (
+                  <button className="cardDelete" disabled={deleting} onClick={() => void remove([v], 'klippet')} aria-label="Ta bort klippet">
+                    Ta bort
+                  </button>
+                ) : null}
+                </div>
               ))}
             </div>
           </section>

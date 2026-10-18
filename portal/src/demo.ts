@@ -171,6 +171,12 @@ export const demoApi = {
     await wait();
     return true;
   },
+  async deleteVideos(list: { id: string; storage_path: string }[]) {
+    await wait();
+    const ids = new Set(list.map((v) => v.id));
+    for (let i = videos.length - 1; i >= 0; i--) if (ids.has(videos[i]!.id)) videos.splice(i, 1);
+    for (const v of list) demoUploads.delete(v.storage_path);
+  },
   async myCoachAccount() {
     await wait();
     return { ...demoAccount, goaltenderCount: demoCoachGoalies.length };
@@ -272,3 +278,4 @@ export const demoApi = {
 };
 
 export const DEMO_USER = { id: USER_ID, email: 'erik@exempel.se' };
+export const DEMO_COACH = { id: COACH_ID, email: 'tranare@exempel.se' };

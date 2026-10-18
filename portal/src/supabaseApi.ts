@@ -292,3 +292,15 @@ export const clipPortalApi: ClipPortalApi = {
     fail(error);
   },
 };
+
+/**
+ * Coach removes published clips: rows first (the goaltender loses access at once,
+ * comments cascade), then the files. The database only allows the coach's own.
+ */
+export async function deleteVideos(videos: { id: string; storage_path: string }[]): Promise<void> {
+  if (videos.length === 0) return;
+  const { error } = await client().from('published_videos').delete().in('id', videos.map((v) => v.id));
+  fail(error);
+  const { error: rmErr } = await client().storage.from('videos').remove(videos.map((v) => v.storage_path));
+  if (rmErr) throw new Error(`Klippen är borttagna för målvakten, men filerna kunde inte raderas: ${rmErr.message}`);
+}

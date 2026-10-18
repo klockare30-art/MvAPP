@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 
-import { addComment, deleteComment, loadComments, loadVideo, signedVideoUrl } from './api';
+import { addComment, deleteComment, deleteVideos, loadComments, loadVideo, signedVideoUrl } from './api';
 import { formatDate, formatPosition, formatTime, sortComments, stepFrame } from './format';
 import type { PublishedVideo, VideoComment } from './types';
 
@@ -125,6 +125,21 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
               {video.team_name ? ` · ${video.team_name}` : ''}
             </span>
           </div>
+        ) : null}
+        {video && isCoach ? (
+          <button
+            className="btn small danger"
+            onClick={() => {
+              if (!window.confirm('Ta bort klippet? Målvakten ser det inte längre och kommentarerna tas bort. Det går inte att ångra.')) return;
+              deleteVideos([video])
+                .then(() => {
+                  window.location.hash = '#/';
+                })
+                .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+            }}
+          >
+            Ta bort klipp
+          </button>
         ) : null}
       </header>
 

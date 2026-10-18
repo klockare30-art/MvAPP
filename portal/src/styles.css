@@ -821,3 +821,47 @@ kbd {
     flex: 1 1 200px;
   }
 }
+
+.manageBar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.cardWrap {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cardWrap .videoCard {
+  flex: 1;
+}
+.cardDelete {
+  margin-top: 0.35rem;
+  min-height: 36px;
+  padding: 0 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--red);
+  background: transparent;
+  color: #ff8080;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn.danger {
+  border-color: var(--red);
+  color: #ff8080;
+  background: transparent;
+}
+.groupHead .btn.small {
+  margin-left: 0;
+}

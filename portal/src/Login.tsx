@@ -55,7 +55,7 @@ export function Login() {
         {step === 'email' ? (
           <form onSubmit={send} className="stack">
             <p>Logga in med e-postadressen som din målvaktstränare har registrerat.</p>
-            {IS_DEMO ? <p className="demoHint">Demo: skriv valfri e-postadress.</p> : null}
+            {IS_DEMO ? <p className="demoHint">Demo: skriv valfri e-postadress för att se målvaktens vy, eller en som börjar med "tranare" (t.ex. tranare@exempel.se) för tränarens.</p> : null}
             <label className="field">
               <span>E-post</span>
               <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -366,4 +366,17 @@ select t.check(t.count($$select * from public.goaltenders where id = '11111111-0
   'goaltenders stay, without a team');
 reset role;
 
+-- Deleting clips: only the coach who published them
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+select t.check(t.affected($$delete from public.published_videos where id = '22222222-0000-0000-0000-0000000000b1'$$) = 0,
+  'coach B cannot delete coach A''s clip');
+select t.check(t.affected($$delete from storage.objects where name like 'aaaaaaaa-%'$$) = 0,
+  'coach B cannot delete coach A''s files');
+reset role;
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+select t.check(t.affected($$delete from public.published_videos where id = '22222222-0000-0000-0000-0000000000b1'$$) = 1,
+  'coach A deletes own clip');
+select t.check(t.affected($$delete from storage.objects where name like '%v-will.mov'$$) = 1, 'coach A deletes own file');
+reset role;
+
 \echo 'ALL RLS TESTS PASSED'

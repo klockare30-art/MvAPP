@@ -32,3 +32,4 @@ export const deleteClub = impl.deleteClub;
 export const listTeams = impl.listTeams;
 export const saveTeam = impl.saveTeam;
 export const deleteTeam = impl.deleteTeam;
+export const deleteVideos = impl.deleteVideos;

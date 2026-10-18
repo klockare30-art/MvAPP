@@ -55,6 +55,24 @@ export function groupByDay(videos: PublishedVideo[]): { day: string; videos: Pub
   return groups;
 }
 
+/**
+ * Videos grouped per day and match/session (local time), newest first:
+ * "fre 18 okt. 2026 · Hemma mot AIK". Clips from the same match stay together.
+ */
+export function groupByMatch(videos: PublishedVideo[]): { key: string; title: string; videos: PublishedVideo[] }[] {
+  const sorted = [...videos].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+  const groups = new Map<string, { key: string; title: string; videos: PublishedVideo[] }>();
+  for (const v of sorted) {
+    const day = formatDate(v.recorded_at);
+    const session = v.session_title?.trim() ?? '';
+    const key = `${day}|${session}`;
+    const g = groups.get(key);
+    if (g) g.videos.push(v);
+    else groups.set(key, { key, title: session ? `${day} · ${session}` : day, videos: [v] });
+  }
+  return [...groups.values()];
+}
+
 /** Timestamped comments first (in video order), then general comments by time. */
 export function sortComments(comments: VideoComment[]): VideoComment[] {
   return [...comments].sort((a, b) => {
