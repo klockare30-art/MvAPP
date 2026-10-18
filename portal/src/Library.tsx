@@ -58,9 +58,14 @@ export function Library({ email, userId }: { email: string; userId: string }) {
         </div>
         <div className="topActions">
           {coach || admin ? (
-            <a className="btn" href="#/tagga">
-              Tagga match
-            </a>
+            <>
+              <a className="btn" href="#/lag">
+                Mina lag
+              </a>
+              <a className="btn" href="#/tagga">
+                Tagga match
+              </a>
+            </>
           ) : null}
           {admin ? (
             <a className="btn" href="#/admin">

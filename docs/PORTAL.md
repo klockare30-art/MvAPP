@@ -20,7 +20,7 @@ iPad-appen ── publicera ──▶ Supabase (EU) ◀── webbläsare ──
 
 ## Säkerhetsmodell (testad)
 
-`npm run test:db` kör 79 kontroller mot riktig Postgres. Bland annat:
+`npm run test:db` kör 92 kontroller mot riktig Postgres. Bland annat:
 
 - en målvakt ser bara sina egna videor, filer och kommentarer
 - en tränare ser bara sina egna målvakter
@@ -122,6 +122,20 @@ EXPO_PUBLIC_PORTAL_URL=https://<din portal>
 5. **Kommentarer:** målvakten skriver i portalen. Du läser och svarar via *Kommentarer* i videovyn i appen eller i portalen, där du kan logga in med samma tränarkonto.
 6. **Ta bort:** *Publicerad till …* → *Ta bort* på en video, eller *Ta bort all portaldata* på målvaktens profil (radering på begäran).
 
+## 4b. Klubbar, lag och målvakter (portalen → Mina lag)
+
+Kräver migreringen `supabase/migrations/20261018000000_clubs_teams.sql`. Kör den i SQL Editor efter de tidigare migreringarna.
+
+- Strukturen är **klubb → lag → målvakter**, och den är **per tränare**: varje tränare ser och ändrar bara sin egen. Det upprätthålls av databasen och är testat.
+- Klubbar och lag kan skapas medan kontot väntar på godkännande. Målvakter kan läggas till först när kontot är aktivt, och inom nivåns gräns.
+- **Per målvakt:** ändra (namn, nummer, e-post, lag), stäng av eller slå på åtkomst, och radera.
+  - *Radera* tar bort målvaktens videofiler, publiceringar och kommentarer, så det är radering på begäran.
+- Tar du bort ett lag eller en klubb finns målvakterna kvar, utan lag.
+- När ett klipp skickas från matchtaggningen får det lagets namn.
+- **Inte byggt:**
+  - flera tränare som delar samma klubb och samma målvakter
+  - synk med lagen i iPad-appen
+
 ## 5. Matchtaggning (test)
 
 Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas från datorn och laddas **inte** upp.
@@ -172,7 +186,7 @@ Det här är ingen juridisk rådgivning, men följande behöver vara klart **inn
 
 | Kontroll | Status |
 |---|---|
-| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 79 kontroller godkända. Avsiktliga sabotage (betalkrav och lagringsgräns borttagna) fångades. |
+| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 92 kontroller godkända. Avsiktliga sabotage (betalkrav, lagringsgräns och lagägarskap borttagna) fångades. |
 | Portalens logik (`portal`: `npm test`) | Godkänd |
 | Portalen i Chromium mot en lokal fejk-Supabase (inloggning, bibliotek, filter, uppspelning, 0,5x, hopp via tidsstämpel) | Fungerar |
 | Publiceringsflödet i appen med fejkat API (ordning, städning vid fel, avpublicering, radering) | Godkänt i Jest |

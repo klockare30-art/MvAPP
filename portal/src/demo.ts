@@ -3,7 +3,7 @@
  * An in-browser stand-in for Supabase with example data, so the portal can be
  * tried without any account or server. Never enabled in the real build.
  */
-import type { ClipPortalApi, CoachAccount, CoachGoaltender } from './publishClip';
+import type { ClipPortalApi, Club, CoachAccount, CoachGoaltender, GoaltenderInput, Team } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === '1';
@@ -91,9 +91,22 @@ let demoCoaches: AdminCoach[] = [
 
 // Clips "published" from the tagging page in the demo live only in this tab.
 const demoUploads = new Map<string, string>();
-let demoCoachGoalies: CoachGoaltender[] = [
-  { id: GOALIE_ID, first_name: 'Erik', last_name: 'Andersson', jersey_number: 30, email: 'erik@exempel.se' },
+let demoClubs: Club[] = [{ id: 'club-1', name: 'Exempelklubben IF' }];
+let demoTeams: Team[] = [
+  { id: 'team-1', club_id: 'club-1', name: 'J18', season: '2026/27' },
+  { id: 'team-2', club_id: 'club-1', name: 'U16', season: '2026/27' },
 ];
+let demoCoachGoalies: CoachGoaltender[] = [
+  { id: GOALIE_ID, first_name: 'Erik', last_name: 'Andersson', jersey_number: 30, email: 'erik@exempel.se',
+    team_id: 'team-1', user_id: USER_ID, access_revoked_at: null },
+  { id: 'demo-goalie-william', first_name: 'William', last_name: 'Berg', jersey_number: 35, email: 'william@exempel.se',
+    team_id: 'team-1', user_id: null, access_revoked_at: null },
+  { id: 'demo-goalie-oliver', first_name: 'Oliver', last_name: 'Ek', jersey_number: 1, email: 'oliver@exempel.se',
+    team_id: 'team-2', user_id: null, access_revoked_at: null },
+];
+const goalieFields = (g: GoaltenderInput) => ({
+  first_name: g.firstName.trim(), last_name: g.lastName.trim(), jersey_number: g.jerseyNumber, email: g.email.trim(), team_id: g.teamId,
+});
 const demoAccount: CoachAccount = {
   status: 'active', planName: 'Plus', paidUntil: null, isActive: true,
   maxStorageBytes: 10 * 1024 ** 3, usedStorageBytes: 0, maxGoaltenders: 30, goaltenderCount: 1,
@@ -169,11 +182,56 @@ export const demoApi = {
     await wait();
     return demoCoachGoalies;
   },
-  async addGoaltender(g: { firstName: string; lastName: string; jerseyNumber: number | null; email: string }) {
+  async addGoaltender(g: GoaltenderInput) {
     await wait();
-    const goalie = { id: `demo-${Date.now()}`, first_name: g.firstName, last_name: g.lastName, jersey_number: g.jerseyNumber, email: g.email };
+    const goalie: CoachGoaltender = { id: `demo-${Date.now()}`, ...goalieFields(g), user_id: null, access_revoked_at: null };
     demoCoachGoalies = [...demoCoachGoalies, goalie];
     return goalie;
+  },
+  async updateGoaltender(id: string, g: GoaltenderInput) {
+    await wait();
+    demoCoachGoalies = demoCoachGoalies.map((x) => (x.id === id ? { ...x, ...goalieFields(g) } : x));
+  },
+  async setGoaltenderAccess(id: string, enabled: boolean) {
+    await wait();
+    demoCoachGoalies = demoCoachGoalies.map((x) => (x.id === id ? { ...x, access_revoked_at: enabled ? null : new Date().toISOString() } : x));
+  },
+  async eraseGoaltender(id: string) {
+    await wait();
+    demoCoachGoalies = demoCoachGoalies.filter((x) => x.id !== id);
+  },
+  async listClubs() {
+    await wait();
+    return demoClubs;
+  },
+  async saveClub(club: { id?: string; name: string }) {
+    await wait();
+    demoClubs = club.id
+      ? demoClubs.map((c) => (c.id === club.id ? { ...c, name: club.name.trim() } : c))
+      : [...demoClubs, { id: `club-${Date.now()}`, name: club.name.trim() }];
+  },
+  async deleteClub(id: string) {
+    await wait();
+    const gone = demoTeams.filter((t) => t.club_id === id).map((t) => t.id);
+    demoClubs = demoClubs.filter((c) => c.id !== id);
+    demoTeams = demoTeams.filter((t) => t.club_id !== id);
+    demoCoachGoalies = demoCoachGoalies.map((g) => (g.team_id && gone.includes(g.team_id) ? { ...g, team_id: null } : g));
+  },
+  async listTeams() {
+    await wait();
+    return demoTeams;
+  },
+  async saveTeam(team: { id?: string; clubId: string; name: string; season: string }) {
+    await wait();
+    const row = { club_id: team.clubId, name: team.name.trim(), season: team.season.trim() };
+    demoTeams = team.id
+      ? demoTeams.map((t) => (t.id === team.id ? { ...t, ...row } : t))
+      : [...demoTeams, { id: `team-${Date.now()}`, ...row }];
+  },
+  async deleteTeam(id: string) {
+    await wait();
+    demoTeams = demoTeams.filter((t) => t.id !== id);
+    demoCoachGoalies = demoCoachGoalies.map((g) => (g.team_id === id ? { ...g, team_id: null } : g));
   },
   clipPortalApi: {
     userId: async () => COACH_ID,

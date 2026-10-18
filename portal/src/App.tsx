@@ -5,6 +5,7 @@ import { currentUser, isPortalConfigured, onUserChange, type PortalUser } from '
 import { IS_DEMO } from './demo';
 import { Library } from './Library';
 import { Login } from './Login';
+import { Teams } from './Teams';
 import { VideoView } from './VideoView';
 
 // The tagging tool pulls in the MP4 library; load it only for coaches who open it.
@@ -58,6 +59,8 @@ export function App() {
     const match = /^#\/video\/([0-9a-f-]{36})$/.exec(hash);
     page = hash === '#/admin' ? (
       <Admin />
+    ) : hash === '#/lag' ? (
+      <Teams />
     ) : hash === '#/tagga' ? (
       <Suspense fallback={<main className="center"><div className="spinner" aria-label="Laddar" /></main>}>
         <MatchTagger />

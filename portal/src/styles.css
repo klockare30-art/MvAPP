@@ -724,3 +724,100 @@ kbd {
     flex-wrap: wrap;
   }
 }
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+.clubCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.clubHead {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.clubName {
+  flex: 1 1 220px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  min-height: 48px;
+}
+.teamBlock {
+  background: var(--bg-elev);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.teamHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.teamHead h2 {
+  margin: 0;
+  flex: 1;
+}
+.addRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.addRow input {
+  flex: 1 1 200px;
+}
+.addRow .seasonInput {
+  flex: 0 1 170px;
+}
+.goalieList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.goalieList > li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: var(--surface);
+}
+.goalieList > li > .addGoalie {
+  flex: 1;
+}
+.goalieList > li.revoked {
+  opacity: 0.6;
+}
+.goalieActions {
+  display: flex;
+  gap: 0.9rem;
+}
+.link.danger {
+  color: #ff8080;
+}
+.addGoalieLink {
+  align-self: flex-start;
+}
+.clubName,
+.addRow input {
+  min-width: 0;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .addRow .seasonInput {
+    flex: 1 1 200px;
+  }
+}

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ClipPortalApi, CoachAccount, CoachGoaltender } from './publishClip';
+import type { ClipPortalApi, Club, CoachAccount, CoachGoaltender, GoaltenderInput, Team } from './publishClip';
 import type { AdminCoach, CoachStatus, GoaltenderProfile, Plan, PublishedVideo, VideoComment } from './types';
 
 function client() {
@@ -173,34 +173,105 @@ export async function becomeCoach(name: string): Promise<void> {
   fail(error);
 }
 
+const GOALIE_COLUMNS = 'id, first_name, last_name, jersey_number, email, team_id, user_id, access_revoked_at';
+
+/** All of the coach's goaltenders, including those whose access is turned off. */
 export async function listMyGoaltenders(): Promise<CoachGoaltender[]> {
   const { data, error } = await client()
     .from('goaltenders')
-    .select('id, first_name, last_name, jersey_number, email')
+    .select(GOALIE_COLUMNS)
     .eq('coach_id', await uid())
-    .is('access_revoked_at', null)
     .order('first_name');
   fail(error);
   return (data ?? []) as CoachGoaltender[];
 }
 
-/** Adds a goaltender with recorded consent (the coach confirms consent in the form). */
-export async function addGoaltender(g: { firstName: string; lastName: string; jerseyNumber: number | null; email: string }): Promise<CoachGoaltender> {
-  const row = {
-    id: crypto.randomUUID(),
-    coach_id: await uid(),
+function goalieRow(g: GoaltenderInput) {
+  return {
     first_name: g.firstName.trim(),
     last_name: g.lastName.trim(),
     jersey_number: g.jerseyNumber,
     email: g.email.trim(),
-    consent_confirmed_at: new Date().toISOString(),
+    team_id: g.teamId,
   };
-  const { error } = await client().from('goaltenders').insert(row);
+}
+
+/** Adds a goaltender with recorded consent (the coach confirms consent in the form). */
+export async function addGoaltender(g: GoaltenderInput): Promise<CoachGoaltender> {
+  const { data, error } = await client()
+    .from('goaltenders')
+    .insert({ id: crypto.randomUUID(), coach_id: await uid(), consent_confirmed_at: new Date().toISOString(), ...goalieRow(g) })
+    .select(GOALIE_COLUMNS)
+    .single();
   if (error?.code === '42501') {
     throw new Error('Målvakten kunde inte läggas till: kontot är inte aktivt eller nivåns gräns för antal målvakter är nådd.');
   }
   fail(error);
-  return { id: row.id, first_name: row.first_name, last_name: row.last_name, jersey_number: row.jersey_number, email: row.email };
+  return data as CoachGoaltender;
+}
+
+export async function updateGoaltender(id: string, g: GoaltenderInput): Promise<void> {
+  const { error } = await client().from('goaltenders').update(goalieRow(g)).eq('id', id);
+  fail(error);
+}
+
+/** Turns the goaltender's portal access off (videos stay) or back on. */
+export async function setGoaltenderAccess(id: string, enabled: boolean): Promise<void> {
+  const { error } = await client()
+    .from('goaltenders')
+    .update({ access_revoked_at: enabled ? null : new Date().toISOString() })
+    .eq('id', id);
+  fail(error);
+}
+
+/** Erasure on request: removes the video files, then the profile (rows and comments cascade). */
+export async function eraseGoaltender(id: string): Promise<void> {
+  const { data, error } = await client().from('published_videos').select('storage_path').eq('goaltender_id', id);
+  fail(error);
+  const paths = (data ?? []).map((r) => (r as { storage_path: string }).storage_path);
+  if (paths.length > 0) {
+    const { error: rmErr } = await client().storage.from('videos').remove(paths);
+    fail(rmErr);
+  }
+  const { error: delErr } = await client().from('goaltenders').delete().eq('id', id);
+  fail(delErr);
+}
+
+export async function listClubs(): Promise<Club[]> {
+  const { data, error } = await client().from('clubs').select('id, name').order('name');
+  fail(error);
+  return (data ?? []) as Club[];
+}
+
+export async function saveClub(club: { id?: string; name: string }): Promise<void> {
+  const { error } = club.id
+    ? await client().from('clubs').update({ name: club.name.trim() }).eq('id', club.id)
+    : await client().from('clubs').insert({ name: club.name.trim() });
+  fail(error);
+}
+
+export async function deleteClub(id: string): Promise<void> {
+  const { error } = await client().from('clubs').delete().eq('id', id);
+  fail(error);
+}
+
+export async function listTeams(): Promise<Team[]> {
+  const { data, error } = await client().from('teams').select('id, club_id, name, season').order('name');
+  fail(error);
+  return (data ?? []) as Team[];
+}
+
+export async function saveTeam(team: { id?: string; clubId: string; name: string; season: string }): Promise<void> {
+  const row = { club_id: team.clubId, name: team.name.trim(), season: team.season.trim() };
+  const { error } = team.id
+    ? await client().from('teams').update(row).eq('id', team.id)
+    : await client().from('teams').insert(row);
+  fail(error);
+}
+
+export async function deleteTeam(id: string): Promise<void> {
+  const { error } = await client().from('teams').delete().eq('id', id);
+  fail(error);
 }
 
 export const clipPortalApi: ClipPortalApi = {

@@ -17,6 +17,30 @@ export interface CoachGoaltender {
   last_name: string;
   jersey_number: number | null;
   email: string;
+  team_id: string | null;
+  /** Set once the goaltender has logged in to the portal with this e-mail. */
+  user_id: string | null;
+  access_revoked_at: string | null;
+}
+
+export interface Club {
+  id: string;
+  name: string;
+}
+
+export interface Team {
+  id: string;
+  club_id: string;
+  name: string;
+  season: string;
+}
+
+export interface GoaltenderInput {
+  firstName: string;
+  lastName: string;
+  jerseyNumber: number | null;
+  email: string;
+  teamId: string | null;
 }
 
 export interface ClipVideoRow {
@@ -70,6 +94,7 @@ export interface ClipToPublish {
   blob: Blob;
   tagLabel: string;
   matchTitle: string;
+  teamName: string | null;
   /** Match date (YYYY-MM-DD) plus the moment in the match, so clips sort in match order. */
   matchDate: string;
   atSec: number;
@@ -102,7 +127,7 @@ export async function publishClip(api: ClipPortalApi, clip: ClipToPublish): Prom
       focus_area: clip.tagLabel,
       exercise: null,
       session_title: clip.matchTitle.trim() || 'Match',
-      team_name: null,
+      team_name: clip.teamName,
       recorded_at: recordedAtFor(clip.matchDate, clip.atSec),
       duration_ms: clip.durationMs,
       frame_rate: null,

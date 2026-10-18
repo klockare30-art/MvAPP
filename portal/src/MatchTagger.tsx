@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { addGoaltender, becomeCoach, clipPortalApi, listMyGoaltenders, myCoachAccount } from './api';
+import { addGoaltender, becomeCoach, clipPortalApi, listClubs, listMyGoaltenders, listTeams, myCoachAccount } from './api';
+import { GoalieForm } from './GoalieForm';
 import { exportClip, inspectMatchFile, type MatchFileInfo } from './clipExport';
 import { formatBytes, localDateIso } from './format';
-import { accountBlocker, goalieLabel, publishClip, type CoachAccount, type CoachGoaltender } from './publishClip';
+import { accountBlocker, goalieLabel, publishClip, type Club, type CoachAccount, type CoachGoaltender, type Team } from './publishClip';
 import {
   clipFileName,
   clipRange,
@@ -63,6 +64,8 @@ export function MatchTagger() {
   const [account, setAccount] = useState<CoachAccount | null | undefined>(undefined);
   const [accountError, setAccountError] = useState<string | null>(null);
   const [goalies, setGoalies] = useState<CoachGoaltender[]>([]);
+  const [clubs, setClubs] = useState<Club[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [goalieId, setGoalieId] = useState('');
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState(() => localDateIso());
@@ -78,8 +81,12 @@ export function MatchTagger() {
       setAccount(a);
       setAccountError(null);
       if (a) {
-        const g = await listMyGoaltenders();
+        const [all, c, t] = await Promise.all([listMyGoaltenders(), listClubs(), listTeams()]);
+        // Goaltenders whose access is turned off cannot receive new clips.
+        const g = all.filter((x) => !x.access_revoked_at);
         setGoalies(g);
+        setClubs(c);
+        setTeams(t);
         setGoalieId((cur) => cur || g[0]?.id || '');
       }
     } catch (e) {
@@ -289,6 +296,7 @@ export function MatchTagger() {
         blob: clip.blob,
         tagLabel: tagTypeById(tag.type).label,
         matchTitle,
+        teamName: teams.find((t) => t.id === goalie.team_id)?.name ?? null,
         matchDate,
         atSec: tag.atSec,
         durationMs: Math.round((clip.endSec - clip.startSec) * 1000),
@@ -446,6 +454,8 @@ export function MatchTagger() {
                   account={account}
                   accountError={accountError}
                   goalies={goalies}
+                  clubs={clubs}
+                  teams={teams}
                   goalieId={goalieId}
                   onGoalie={setGoalieId}
                   matchTitle={matchTitle}
@@ -566,6 +576,8 @@ function PortalPanel(props: {
   account: CoachAccount | null | undefined;
   accountError: string | null;
   goalies: CoachGoaltender[];
+  clubs: Club[];
+  teams: Team[];
   goalieId: string;
   onGoalie: (id: string) => void;
   matchTitle: string;
@@ -575,27 +587,10 @@ function PortalPanel(props: {
   onChanged: () => Promise<void>;
   onAdded: (g: CoachGoaltender) => void;
 }) {
-  const { account } = props;
+  const { account, goalies, teams } = props;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  const [first, setFirst] = useState('');
-  const [last, setLast] = useState('');
-  const [jersey, setJersey] = useState('');
-  const [email, setEmail] = useState('');
-  const [consent, setConsent] = useState(false);
-
-  const run = async (fn: () => Promise<void>) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await fn();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   if (props.accountError) return <p className="error small">{props.accountError}</p>;
   if (account === undefined) return null;
@@ -606,10 +601,18 @@ function PortalPanel(props: {
         <strong>Skicka klipp till målvakter</strong>
         <p className="small muted">Kräver en tränarprofil som administratören godkänner.</p>
         {error ? <p className="error small">{error}</p> : null}
-        <button className="btn primary" disabled={busy} onClick={() => void run(async () => {
-          await becomeCoach('');
-          await props.onChanged();
-        })}>
+        <button
+          className="btn primary"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            setError(null);
+            becomeCoach('')
+              .then(props.onChanged)
+              .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+              .finally(() => setBusy(false));
+          }}
+        >
           Skapa tränarprofil
         </button>
       </div>
@@ -629,9 +632,7 @@ function PortalPanel(props: {
     );
   }
 
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const jerseyNum = jersey.trim() === '' ? null : Number(jersey);
-  const jerseyOk = jerseyNum === null || (Number.isInteger(jerseyNum) && jerseyNum >= 0 && jerseyNum <= 99);
+  const withoutTeam = goalies.filter((g) => !g.team_id || !teams.some((t) => t.id === g.team_id));
 
   return (
     <div className="portalPanel">
@@ -640,12 +641,32 @@ function PortalPanel(props: {
         <label className="field">
           Målvakt
           <select value={props.goalieId} onChange={(e) => props.onGoalie(e.target.value)}>
-            {props.goalies.length === 0 ? <option value="">Inga målvakter än</option> : null}
-            {props.goalies.map((g) => (
-              <option key={g.id} value={g.id}>
-                {goalieLabel(g)}
-              </option>
-            ))}
+            {goalies.length === 0 ? <option value="">Inga målvakter än</option> : null}
+            {props.clubs.map((c) =>
+              teams
+                .filter((t) => t.club_id === c.id)
+                .map((t) => {
+                  const own = goalies.filter((g) => g.team_id === t.id);
+                  return own.length > 0 ? (
+                    <optgroup key={t.id} label={`${c.name} – ${t.name}`}>
+                      {own.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {goalieLabel(g)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null;
+                }),
+            )}
+            {withoutTeam.length > 0 ? (
+              <optgroup label="Utan lag">
+                {withoutTeam.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {goalieLabel(g)}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
           </select>
         </label>
         <label className="field">
@@ -658,57 +679,26 @@ function PortalPanel(props: {
         </label>
       </div>
       {!adding ? (
-        <button className="link small" onClick={() => setAdding(true)}>
-          + Lägg till målvakt
-        </button>
-      ) : (
-        <div className="addGoalie">
-          <div className="portalFields">
-            <label className="field">
-              Förnamn
-              <input value={first} onChange={(e) => setFirst(e.target.value)} />
-            </label>
-            <label className="field">
-              Efternamn
-              <input value={last} onChange={(e) => setLast(e.target.value)} />
-            </label>
-            <label className="field">
-              Nummer
-              <input inputMode="numeric" value={jersey} onChange={(e) => setJersey(e.target.value)} />
-            </label>
-            <label className="field">
-              E-post (inloggning)
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </label>
-          </div>
-          <label className="check small">
-            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-            Samtycke finns från målvakten (och vårdnadshavare om under 18) till att videor lagras och visas i portalen.
-          </label>
-          <div className="adminActions">
-            <button className="btn" onClick={() => setAdding(false)}>
-              Avbryt
-            </button>
-            <button
-              className="btn primary"
-              disabled={busy || !first.trim() || !emailOk || !jerseyOk || !consent}
-              onClick={() => void run(async () => {
-                const g = await addGoaltender({ firstName: first, lastName: last, jerseyNumber: jerseyNum, email });
-                props.onAdded(g);
-                setAdding(false);
-                setFirst('');
-                setLast('');
-                setJersey('');
-                setEmail('');
-                setConsent(false);
-              })}
-            >
-              Spara målvakt
-            </button>
-          </div>
+        <div className="linkRow small">
+          <button className="link" onClick={() => setAdding(true)}>
+            + Lägg till målvakt
+          </button>
+          <a className="link" href="#/lag">
+            Hantera klubbar, lag och målvakter
+          </a>
         </div>
+      ) : (
+        <GoalieForm
+          clubs={props.clubs}
+          teams={teams}
+          onCancel={() => setAdding(false)}
+          onSave={async (input) => {
+            const g = await addGoaltender(input);
+            props.onAdded(g);
+            setAdding(false);
+          }}
+        />
       )}
-      {error ? <p className="error small">{error}</p> : null}
       {account.maxStorageBytes != null ? (
         <p className="small muted">
           Nivå {account.planName}: {formatBytes(account.usedStorageBytes)} av {formatBytes(account.maxStorageBytes)} använt

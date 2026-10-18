@@ -319,4 +319,51 @@ select t.check(t.affected($$delete from public.goaltenders where id = '11111111-
   'suspended coach can still erase a goaltender');
 reset role;
 
+-- ---------------------------------------------------------------------------
+-- Clubs and teams (per coach)
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.clubs (id, name) values ('c1000000-0000-0000-0000-00000000000a', 'Djurgården');
+insert into public.teams (id, club_id, name, season)
+  values ('7e000000-0000-0000-0000-00000000000a', 'c1000000-0000-0000-0000-00000000000a', 'J18', '2026/27');
+select t.check(t.affected($$update public.goaltenders set team_id = '7e000000-0000-0000-0000-00000000000a'
+  where id = '11111111-0000-0000-0000-00000000d01a'$$) = 1, 'coach places own goaltender in own team');
+select t.denied($$insert into public.clubs (id, coach_id, name) values (gen_random_uuid(), 'bbbbbbbb-0000-0000-0000-000000000002', 'Fake')$$,
+  'coach cannot create a club for another coach');
+reset role;
+
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+select t.check(t.count('select * from public.clubs') = 0 and t.count('select * from public.teams') = 0,
+  'coach B sees none of coach A''s clubs or teams');
+select t.denied($$insert into public.teams (club_id, name) values ('c1000000-0000-0000-0000-00000000000a', 'Intrång')$$,
+  'coach B cannot add a team to coach A''s club');
+select t.check(t.affected($$update public.clubs set name = 'Hackad'$$) = 0, 'coach B cannot rename coach A''s club');
+select t.check(t.affected($$delete from public.teams$$) = 0, 'coach B cannot delete coach A''s teams');
+insert into public.clubs (id, name) values ('c1000000-0000-0000-0000-00000000000b', 'AIK');
+insert into public.teams (id, club_id, name) values ('7e000000-0000-0000-0000-00000000000b', 'c1000000-0000-0000-0000-00000000000b', 'U16');
+select t.check(t.count('select * from public.teams') = 1, 'coach B sees only own team');
+reset role;
+
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+select t.denied($$update public.goaltenders set team_id = '7e000000-0000-0000-0000-00000000000b'
+  where id = '11111111-0000-0000-0000-00000000d01a'$$, 'coach cannot place a goaltender in another coach''s team');
+select t.denied($$update public.teams set club_id = 'c1000000-0000-0000-0000-00000000000b'$$,
+  'coach cannot move a team into another coach''s club');
+reset role;
+
+select t.login('ffffffff-0000-0000-0000-000000000006');
+select t.check(t.count('select * from public.clubs') = 0 and t.count('select * from public.teams') = 0,
+  'other users see no clubs or teams');
+reset role;
+set role anon;
+select t.denied('select * from public.clubs', 'anonymous users cannot read clubs');
+reset role;
+
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+delete from public.clubs where id = 'c1000000-0000-0000-0000-00000000000a';
+select t.check(t.count('select * from public.teams') = 0, 'deleting a club deletes its teams');
+select t.check(t.count($$select * from public.goaltenders where id = '11111111-0000-0000-0000-00000000d01a' and team_id is null$$) = 1,
+  'goaltenders stay, without a team');
+reset role;
+
 \echo 'ALL RLS TESTS PASSED'
