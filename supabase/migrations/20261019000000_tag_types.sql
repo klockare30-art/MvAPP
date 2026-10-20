@@ -3,8 +3,9 @@
 --   * Varje tränare har sin egen lista med taggar: namn, kortkommando, färg och klipplängd.
 --   * F och B är reserverade för snabbspolning framåt/bakåt.
 --   * Saknar tränaren egna taggar används standardlistan i portalen.
+--   * Filen kan köras flera gånger (hoppar över det som redan finns).
 
-create table public.coach_tag_types (
+create table if not exists public.coach_tag_types (
   coach_id uuid not null default auth.uid() references public.coaches (id) on delete cascade,
   id text not null check (id ~ '^[a-z0-9-]{1,40}$'),
   label text not null check (length(trim(label)) between 1 and 30),
@@ -23,6 +24,7 @@ grant select, delete on public.coach_tag_types to authenticated;
 grant insert (id, label, shortcut, color, before_sec, after_sec, sort_order) on public.coach_tag_types to authenticated;
 
 alter table public.coach_tag_types enable row level security;
+drop policy if exists tag_types_coach on public.coach_tag_types;
 create policy tag_types_coach on public.coach_tag_types
   for all to authenticated
   using (coach_id = auth.uid())
@@ -30,7 +32,7 @@ create policy tag_types_coach on public.coach_tag_types
 
 -- Replaces the caller's whole list in one transaction (so swapping two shortcuts works).
 -- SECURITY INVOKER: runs with the caller's rights, so the policies above apply.
-create function public.save_my_tag_types(p_types jsonb)
+create or replace function public.save_my_tag_types(p_types jsonb)
 returns void
 language plpgsql volatile security invoker set search_path = ''
 as $$
