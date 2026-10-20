@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { loadTagTypes, saveTagTypes } from './api';
+import { setAccountPassword } from './auth';
 import { DEFAULT_TAG_TYPES, MAX_TAG_TYPES, RESERVED_KEYS, tagTypeId, tagTypesProblem, type TagType } from './tagging';
 
 const PALETTE = ['#2f7bff', '#f97316', '#a855f7', '#22c55e', '#ef3b3b', '#facc15', '#14b8a6', '#ec4899', '#94a3b8'];
@@ -196,8 +197,61 @@ export function ControlPanel() {
           </section>
         ) : null}
 
+        <PasswordCard />
+
         {error ? <p className="error" role="alert">{error}</p> : null}
       </main>
     </div>
+  );
+}
+
+/** Lets a coach who logs in with codes set a password for the iPad app (same account, same teams). */
+function PasswordCard() {
+  const [pw, setPw] = useState('');
+  const [pw2, setPw2] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const valid = pw.length >= 10 && pw === pw2;
+
+  return (
+    <section className="card">
+      <h2>Lösenord för iPad-appen</h2>
+      <p className="muted small">
+        Portalen loggar in med kod via mejl. iPad-appen loggar in med e-post och lösenord. Sätt ett lösenord här, så
+        loggar du in i appen med <strong>samma e-post</strong> och samma konto – med dina lag och målvakter.
+      </p>
+      <div className="portalFields">
+        <label className="field">
+          Nytt lösenord (minst 10 tecken)
+          <input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+        </label>
+        <label className="field">
+          Upprepa lösenordet
+          <input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+        </label>
+      </div>
+      {pw2 && pw !== pw2 ? <p className="error small">Lösenorden är inte lika.</p> : null}
+      {msg ? <p className={msg.ok ? 'published' : 'error small'}>{msg.text}</p> : null}
+      <div className="adminActions">
+        <button
+          className="btn primary"
+          disabled={busy || !valid}
+          onClick={() => {
+            setBusy(true);
+            setMsg(null);
+            setAccountPassword(pw)
+              .then(() => {
+                setMsg({ ok: true, text: '✓ Lösenordet är sparat. Logga in i iPad-appen med din e-post och det här lösenordet.' });
+                setPw('');
+                setPw2('');
+              })
+              .catch((e: unknown) => setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) }))
+              .finally(() => setBusy(false));
+          }}
+        >
+          {busy ? 'Sparar…' : 'Spara lösenord'}
+        </button>
+      </div>
+    </section>
   );
 }

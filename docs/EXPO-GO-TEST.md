@@ -1,5 +1,7 @@
 # Första test på iPaden med Expo Go (gratis)
 
+> Med Claude Code på datorn: be den följa `docs/LOKAL-START.md`. Den gör installationen och startar servern.
+
 Expo Go är en gratis app från App Store som kör GoalieVision direkt från din dator via Wi-Fi. Den kräver inget Apple Developer-konto, ingen kabel och ingen Mac. Det fullständiga bygget beskrivs i `IPAD-TEST.md` och kräver Apple Developer-konto.
 
 ## Skillnader mot ett eget bygge
@@ -57,6 +59,6 @@ Använd protokollet i `IPAD-TEST.md` med dessa ändringar:
 - **A2:** behörighetstexten kommer från Expo Go och är inte svensk. Det är väntat.
 - **B2** (tvinga stängning): öppna sedan Expo Go igen och välj projektet under *Recently opened*.
 - **C (klippning):** hoppa över. Kontrollera bara att *Klipp* visar att det kräver ett eget bygge och inte kraschar.
-- **E (portalen):** tränarkontot i appen använder e-post och lösenord. Om du redan loggat in i portalen med samma e-post med kod, ta först bort den användaren i Supabase → Authentication → Users, eller använd en annan e-post för tränarkontot.
+- **E (portalen):** tränarkontot i appen använder e-post och lösenord. Har du loggat in i portalen med kod: sätt ett lösenord under portalen → **Kontrollpanel → Lösenord för iPad-appen**, och logga sedan in i appen med samma e-post. Använd inte "Skapa tränarkonto", eftersom det ger en annan tränare utan dina lag.
 
 Fyll i resultatkolumnen och skicka tillbaka den med skärmdumpar eller felmeddelanden. Röda felskärmar i Expo Go innehåller texten jag behöver; fota eller skärmdumpa hela.

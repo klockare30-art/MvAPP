@@ -71,3 +71,21 @@ export async function signOut(): Promise<void> {
   if (IS_DEMO) return setDemo(null);
   await supabase!.auth.signOut();
 }
+
+/**
+ * Sets a password on the signed-in account, so the same account can log in to
+ * the iPad app (which uses e-mail + password). The portal itself keeps using codes.
+ */
+export async function setAccountPassword(password: string): Promise<void> {
+  if (password.length < 10) throw new Error('Välj ett lösenord med minst 10 tecken.');
+  if (IS_DEMO) return;
+  const { error } = await supabase!.auth.updateUser({ password });
+  if (!error) return;
+  if (/reauthenticat/i.test(error.message)) {
+    throw new Error('Supabase kräver ny inloggning för lösenordsbyte. Logga ut, logga in igen med koden och försök direkt efteråt.');
+  }
+  if (/weak|pwned|leaked|compromised/i.test(error.message)) {
+    throw new Error('Lösenordet är för svagt eller har läckt tidigare. Välj ett annat.');
+  }
+  throw new Error(`Lösenordet kunde inte sparas: ${error.message}`);
+}
