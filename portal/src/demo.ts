@@ -170,10 +170,14 @@ export const demoApi = {
     await wait();
     return false;
   },
-  // Shown in the demo so the tagging tool can be tried (it works fully offline).
+  // Coach view only when logged in with a "tranare…" address (see auth.ts).
   async isCoach() {
     await wait();
-    return true;
+    try {
+      return localStorage.getItem('gv-demo-session') === 'coach';
+    } catch {
+      return false;
+    }
   },
   async deleteVideos(list: { id: string; storage_path: string }[]) {
     await wait();
