@@ -1,3 +1,4 @@
+import { explainDbError } from './dbErrors';
 import { supabase } from './supabase';
 import type { TagType } from './tagging';
 import type { ClipPortalApi, Club, CoachAccount, CoachGoaltender, GoaltenderInput, Team } from './publishClip';
@@ -8,8 +9,8 @@ function client() {
   return supabase;
 }
 
-function fail(error: { message: string } | null): void {
-  if (error) throw new Error(error.message);
+function fail(error: { message: string; code?: string } | null): void {
+  if (error) throw new Error(explainDbError(error));
 }
 
 /** Links goaltender profiles registered to the user's verified e-mail. */
@@ -286,13 +287,13 @@ export const clipPortalApi: ClipPortalApi = {
   async uploadFile(path, blob) {
     const bucket = client().storage.from('videos');
     const { data, error } = await bucket.createSignedUploadUrl(path);
-    if (error || !data) throw new Error(`Uppladdningen kunde inte förberedas: ${error?.message ?? 'okänt fel'}`);
+    if (error || !data) throw new Error(`Uppladdningen kunde inte förberedas: ${error ? explainDbError(error) : 'okänt fel'}`);
     const { error: upErr } = await bucket.uploadToSignedUrl(path, data.token, blob, { contentType: 'video/mp4' });
     if (upErr) throw new Error(`Uppladdningen misslyckades: ${upErr.message}`);
   },
   async insertVideo(row) {
     const { error } = await client().from('published_videos').insert(row);
-    if (error) throw new Error(`Klippet kunde inte registreras: ${error.message}`);
+    if (error) throw new Error(`Klippet kunde inte registreras: ${explainDbError(error)}`);
   },
   async removeObject(path) {
     const { error } = await client().storage.from('videos').remove([path]);
