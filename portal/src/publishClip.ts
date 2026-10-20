@@ -58,6 +58,7 @@ export interface ClipVideoRow {
   width: number | null;
   height: number | null;
   coach_note: string | null;
+  session_kind: 'match' | 'traning';
 }
 
 export interface ClipPortalApi {
@@ -94,6 +95,7 @@ export interface ClipToPublish {
   blob: Blob;
   tagLabel: string;
   matchTitle: string;
+  sessionKind: 'match' | 'traning';
   teamName: string | null;
   /** Match date (YYYY-MM-DD) plus the moment in the match, so clips sort in match order. */
   matchDate: string;
@@ -126,7 +128,8 @@ export async function publishClip(api: ClipPortalApi, clip: ClipToPublish): Prom
       storage_path: path,
       focus_area: clip.tagLabel,
       exercise: null,
-      session_title: clip.matchTitle.trim() || 'Match',
+      session_title: clip.matchTitle.trim() || (clip.sessionKind === 'match' ? 'Match' : 'Träning'),
+      session_kind: clip.sessionKind,
       team_name: clip.teamName,
       recorded_at: recordedAtFor(clip.matchDate, clip.atSec),
       duration_ms: clip.durationMs,

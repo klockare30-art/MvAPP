@@ -12,7 +12,11 @@ export interface PublishedVideo {
   frame_rate: number | null;
   coach_note: string | null;
   published_at: string;
+  /** 'match' | 'traning'; null for clips published before the type existed. */
+  session_kind?: SessionKind | null;
 }
+
+export type SessionKind = 'match' | 'traning';
 
 export interface GoaltenderProfile {
   id: string;

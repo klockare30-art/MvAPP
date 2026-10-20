@@ -20,7 +20,7 @@ function fakeApi(over: Partial<ClipPortalApi> = {}) {
 }
 
 const clip = {
-  videoId: 'v1', goaltenderId: 'g1', blob: new Blob(['x']), tagLabel: 'Skott', matchTitle: 'Hemma mot AIK', teamName: 'J18',
+  videoId: 'v1', goaltenderId: 'g1', blob: new Blob(['x']), tagLabel: 'Skott', matchTitle: 'Hemma mot AIK', sessionKind: 'match' as const, teamName: 'J18',
   matchDate: '2026-10-18', atSec: 125, durationMs: 9000, width: 1920, height: 1080,
 };
 

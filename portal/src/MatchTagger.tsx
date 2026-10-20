@@ -5,6 +5,7 @@ import { GoalieForm, TeamOptions } from './GoalieForm';
 import { exportClip, inspectMatchFile, type MatchFileInfo } from './clipExport';
 import { formatBytes, localDateIso } from './format';
 import { accountBlocker, goalieLabel, publishClip, type Club, type CoachAccount, type CoachGoaltender, type Team } from './publishClip';
+import type { SessionKind } from './types';
 import {
   clipFileName,
   clipRange,
@@ -73,6 +74,7 @@ export function MatchTagger() {
   const [goalieId, setGoalieId] = useState('');
   const [teamId, setTeamId] = useState('');
   const [matchTitle, setMatchTitle] = useState('');
+  const [kind, setKind] = useState<SessionKind>('match');
   const [matchDate, setMatchDate] = useState(() => localDateIso());
   const video = useRef<HTMLVideoElement>(null);
   const fastRef = useRef(false);
@@ -356,6 +358,7 @@ export function MatchTagger() {
         blob: clip.blob,
         tagLabel: tagTypeById(tagTypes, tag.type).label,
         matchTitle,
+        sessionKind: kind,
         teamName: teams.find((t) => t.id === goalie.team_id)?.name ?? null,
         matchDate,
         atSec: tag.atSec,
@@ -551,6 +554,8 @@ export function MatchTagger() {
                   teamGoalies={teamGoalies}
                   goalieId={goalieId}
                   onGoalie={setGoalieId}
+                  kind={kind}
+                  onKind={setKind}
                   matchTitle={matchTitle}
                   onMatchTitle={setMatchTitle}
                   matchDate={matchDate}
@@ -734,6 +739,8 @@ function PortalPanel(props: {
   teamGoalies: CoachGoaltender[];
   goalieId: string;
   onGoalie: (id: string) => void;
+  kind: SessionKind;
+  onKind: (k: SessionKind) => void;
   matchTitle: string;
   onMatchTitle: (v: string) => void;
   matchDate: string;
@@ -790,8 +797,11 @@ function PortalPanel(props: {
 
   return (
     <div className="portalPanel">
-      <strong>Spara matchens klipp</strong>
-      <p className="small muted">Klippen sparas under valt lag och målvakt. Målvakten ser dem direkt i portalen.</p>
+      <strong>Spara klipp</strong>
+      <p className="small muted">
+        Klippen sparas under klubb, lag och målvakt, som {props.kind === 'match' ? 'match' : 'träning'} med datum och rubrik.
+        Målvakten ser dem direkt i portalen.
+      </p>
       <div className="portalFields">
         <label className="field">
           Lag
@@ -813,8 +823,19 @@ function PortalPanel(props: {
           </select>
         </label>
         <label className="field">
-          Match
-          <input value={props.matchTitle} onChange={(e) => props.onMatchTitle(e.target.value)} placeholder="t.ex. Hemma mot AIK" />
+          Typ
+          <select value={props.kind} onChange={(e) => props.onKind(e.target.value as SessionKind)}>
+            <option value="match">Match</option>
+            <option value="traning">Träning</option>
+          </select>
+        </label>
+        <label className="field">
+          Rubrik
+          <input
+            value={props.matchTitle}
+            onChange={(e) => props.onMatchTitle(e.target.value)}
+            placeholder={props.kind === 'match' ? 't.ex. Hemma mot AIK' : 't.ex. Förflyttningar'}
+          />
         </label>
         <label className="field">
           Datum

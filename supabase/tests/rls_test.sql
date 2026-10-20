@@ -412,4 +412,28 @@ select t.denied('select * from public.coach_tag_types', 'anonymous users cannot 
 select t.denied($$select public.save_my_tag_types('[]'::jsonb)$$, 'anonymous users cannot save tags');
 reset role;
 
+-- ---------------------------------------------------------------------------
+-- Match or training per clip
+-- ---------------------------------------------------------------------------
+select t.login('99999999-0000-0000-0000-000000000009');
+select public.admin_update_coach('aaaaaaaa-0000-0000-0000-000000000001', 'active', 'start', null);
+reset role;
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+insert into storage.objects (bucket_id, name, metadata) values
+  ('videos', 'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000d01a/m1.mp4', '{"size": 1000}');
+insert into public.published_videos (id, coach_id, goaltender_id, storage_path, recorded_at, duration_ms, session_kind)
+  values ('22222222-0000-0000-0000-0000000000a1', auth.uid(), '11111111-0000-0000-0000-00000000d01a',
+          'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000d01a/m1.mp4', now(), 9000, 'match');
+select t.check((select session_kind from public.published_videos where id = '22222222-0000-0000-0000-0000000000a1') = 'match',
+  'coach publishes a clip as match');
+select t.check(t.affected($$update public.published_videos set session_kind = 'traning'
+  where id = '22222222-0000-0000-0000-0000000000a1'$$) = 1, 'coach can change match/training afterwards');
+select t.denied($$update public.published_videos set session_kind = 'cup' where id = '22222222-0000-0000-0000-0000000000a1'$$,
+  'only match or training is allowed');
+reset role;
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+select t.check(t.affected($$update public.published_videos set session_kind = 'match'$$) = 0,
+  'another coach cannot change the type');
+reset role;
+
 \echo 'ALL RLS TESTS PASSED'

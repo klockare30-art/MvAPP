@@ -1014,3 +1014,79 @@ kbd {
     grid-column: 1 / -1;
   }
 }
+.treeClub {
+  margin-top: 1.5rem;
+}
+.treeClubName {
+  font-size: 1.3rem;
+  margin: 0 0 0.6rem;
+}
+.treeTeam {
+  margin: 0 0 1rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--border);
+}
+.treeTeamName {
+  font-size: 1rem;
+  margin: 0.25rem 0 0.5rem;
+  color: var(--text-2);
+}
+.treeGoalie {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 0.6rem;
+}
+.treeGoalie > summary,
+.treeSession > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.treeGoalie > summary::-webkit-details-marker,
+.treeSession > summary::-webkit-details-marker {
+  display: none;
+}
+.treeGoalie > summary {
+  padding: 0.85rem 1rem;
+  min-height: 52px;
+}
+.treeGoalie > summary::before,
+.treeSession > summary::before {
+  content: '▸';
+  color: var(--muted);
+}
+.treeGoalie[open] > summary::before,
+.treeSession[open] > summary::before {
+  content: '▾';
+}
+.treeGoalie > summary strong {
+  flex: 1;
+}
+.treeKind {
+  padding: 0 1rem 0.75rem;
+}
+.treeKind .dayTitle {
+  margin: 0.5rem 0 0.4rem;
+}
+.treeSession {
+  background: var(--bg-elev);
+  border-radius: 12px;
+  margin-bottom: 0.5rem;
+}
+.treeSession > summary {
+  padding: 0.6rem 0.8rem;
+  min-height: 44px;
+}
+.treeSession > summary > span:first-of-type {
+  flex: 1;
+}
+.treeSession > .grid {
+  padding: 0 0.8rem 0.8rem;
+}
+.treeSession .btn.small {
+  margin-left: 0;
+}

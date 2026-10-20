@@ -82,6 +82,8 @@ export interface RemotePublishedVideo {
   width: number | null;
   height: number | null;
   coach_note: string | null;
+  /** The iPad app records training sessions; match clips come from the portal's match tagging. */
+  session_kind: 'traning';
 }
 
 /** Swedish, user-facing reason why a video cannot be published yet (null = OK). */
@@ -121,6 +123,7 @@ export function remoteVideoRow(v: VideoListItem, coachId: string, storagePath: s
     width: v.width,
     height: v.height,
     coach_note: v.note,
+    session_kind: 'traning',
   };
 }
 

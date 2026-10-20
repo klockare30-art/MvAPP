@@ -20,7 +20,7 @@ iPad-appen ── publicera ──▶ Supabase (EU) ◀── webbläsare ──
 
 ## Säkerhetsmodell (testad)
 
-`npm run test:db` kör 106 kontroller mot riktig Postgres. Bland annat:
+`npm run test:db` kör 110 kontroller mot riktig Postgres. Bland annat:
 
 - en målvakt ser bara sina egna videor, filer och kommentarer
 - en tränare ser bara sina egna målvakter
@@ -136,9 +136,15 @@ Kräver migreringen `supabase/migrations/20261018000000_clubs_teams.sql`. Kör d
   - flera tränare som delar samma klubb och samma målvakter
   - synk med lagen i iPad-appen
 
-## 4c. Ta bort klipp och matcher (tränare)
+## 4c. Tränarens bibliotek, och att ta bort klipp och matcher
 
-- Videorna grupperas per dag och match eller träningspass.
+Kräver migreringen `supabase/migrations/20261020000000_session_kind.sql`, som går att köra flera gånger.
+
+- Tränarens klipp visas som **klubb → lag → målvakt → Matcher/Träningar → rubrik och datum → klippen**.
+  - Matchklipp visar var i matchen klippet ligger.
+- **Typ:** matchtaggningen frågar efter Match eller Träning, med Match som standard. iPad-appen sparar alltid som Träning.
+  - Klipp sparade innan typen fanns visas under "Utan typ (äldre klipp)".
+- Målvakter ser sina egna videor per dag och pass, som tidigare.
 - **Hantera klipp** (syns bara för tränare): välj **Ta bort** på ett klipp, eller **Ta bort matchen** för alla klipp i gruppen. Det går också från videovyn med **Ta bort klipp**.
 - Det som tas bort är publiceringen, filen och kommentarerna. Målvakten ser klippet inte längre.
 - En tränare kan bara ta bort klipp som hen själv har publicerat. Det är testat i databasen.
@@ -216,7 +222,7 @@ Det här är ingen juridisk rådgivning, men följande behöver vara klart **inn
 
 | Kontroll | Status |
 |---|---|
-| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 106 kontroller godkända. Avsiktliga sabotage (betalkrav, lagringsgräns och lagägarskap borttagna) fångades. |
+| Säkerhetsregler (RLS + lagring) mot Postgres 16 med Supabase-stubbar | 110 kontroller godkända. Avsiktliga sabotage (betalkrav, lagringsgräns och lagägarskap borttagna) fångades. |
 | Portalens logik (`portal`: `npm test`) | Godkänd |
 | Portalen i Chromium mot en lokal fejk-Supabase (inloggning, bibliotek, filter, uppspelning, 0,5x, hopp via tidsstämpel) | Fungerar |
 | Publiceringsflödet i appen med fejkat API (ordning, städning vid fel, avpublicering, radering) | Godkänt i Jest |

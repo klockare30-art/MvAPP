@@ -44,6 +44,7 @@ const videos: PublishedVideo[] = [
   frame_rate: 30,
   coach_note: note as string | null,
   published_at: at as string,
+  session_kind: 'traning' as const,
 }));
 
 const COMMENTS_KEY = 'gv-demo-comments';
@@ -265,6 +266,7 @@ export const demoApi = {
         focus_area: row.focus_area, exercise: row.exercise, session_title: row.session_title, team_name: row.team_name,
         recorded_at: row.recorded_at, duration_ms: row.duration_ms, frame_rate: row.frame_rate, coach_note: row.coach_note,
         published_at: new Date().toISOString(),
+        session_kind: row.session_kind,
       });
     },
     async removeObject(path: string) {
