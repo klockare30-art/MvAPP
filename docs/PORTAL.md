@@ -59,6 +59,14 @@ Logga in med valfri e-post och koden `123456`. `npm run build:demo` bygger demon
 6. **Storage → Settings**: kontrollera *maximal filstorlek*. Se avsnittet Kostnader nedan.
 7. **Project Settings → API**: kopiera *Project URL* och *anon public key*.
 
+## 1a. Inloggning
+
+- **Målvakter** loggar in utan lösenord, med länk eller kod via mejl (fliken *Målvakt*).
+- **Tränare** loggar som standard in med **e-post och lösenord** (fliken *Tränare*). Samma konto fungerar i iPad-appen.
+  - Lösenordet ska vara minst 10 tecken. Om skyddet mot läckta lösenord är påslaget i Supabase nekas lösenord som läckt tidigare.
+  - **Nytt tränarkonto:** skapas med e-post och lösenord och bekräftas via mejl. Tränarprofilen skapas vid första inloggningen och får status *väntar på godkännande*.
+  - **Glömt lösenord, eller inget lösenord än** (t.ex. konton skapade med kod): logga in med kod och sätt ett lösenord under **Kontrollpanel → Lösenord för iPad-appen**.
+
 ## 1b. Admin, tränare och nivåer
 
 Migreringen `supabase/migrations/20261016000000_coach_access.sql` lägger till administration. Kör den i **SQL Editor** efter den första migreringen.

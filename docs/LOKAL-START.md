@@ -63,7 +63,7 @@ npx expo start --go
 
 ## 5. Logga in som tränare i appen
 Appen loggar in med **e-post och lösenord**. Tränarens befintliga konto är skapat med inloggningskod och har inget lösenord. Gör så här:
-1. **Portalen → Kontrollpanel → "Lösenord för iPad-appen":** sätt ett lösenord på minst 10 tecken.
+1. Har tränaren redan ett lösenord (fliken *Tränare* i portalen fungerar): hoppa över detta steg. Annars: **portalen → Kontrollpanel → "Lösenord för iPad-appen"**, och sätt ett lösenord på minst 10 tecken.
 2. **Appen → Inställningar → Målvaktsportal:** logga in med **samma e-post** och det lösenordet. Använd inte "Skapa tränarkonto", eftersom det skapar en annan tränare utan lag och målvakter.
 
 ## 6. Testa

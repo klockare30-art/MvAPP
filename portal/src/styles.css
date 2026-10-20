@@ -1090,3 +1090,28 @@ kbd {
 .treeSession .btn.small {
   margin-left: 0;
 }
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin: 0.5rem 0 1rem;
+  border-radius: 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+.tab {
+  min-height: 44px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tab.on {
+  background: var(--blue);
+  color: #fff;
+}

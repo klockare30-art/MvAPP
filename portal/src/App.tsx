@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { Admin } from './Admin';
 import { ControlPanel } from './ControlPanel';
+import { becomeCoach } from './api';
 import { currentUser, isPortalConfigured, onUserChange, type PortalUser } from './auth';
 import { IS_DEMO } from './demo';
 import { Library } from './Library';
@@ -38,8 +39,16 @@ export function App() {
 
   useEffect(() => {
     if (!isPortalConfigured) return;
-    currentUser().then(setUser).catch(() => setUser(null));
-    return onUserChange(setUser);
+    // Coaches who signed up with a password get their (pending) coach profile on first login.
+    const withCoach = async (u: PortalUser | null) => {
+      if (u?.wantsCoach) await becomeCoach('').catch(() => undefined);
+      return u;
+    };
+    currentUser()
+      .then(withCoach)
+      .then(setUser)
+      .catch(() => setUser(null));
+    return onUserChange((u) => void withCoach(u).then(setUser));
   }, []);
 
   if (!isPortalConfigured) {
