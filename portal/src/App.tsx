@@ -78,7 +78,7 @@ export function App() {
         <MatchTagger />
       </Suspense>
     ) : match?.[1] ? (
-      <VideoView videoId={match[1]} userId={user.id} />
+      <VideoView key={match[1]} videoId={match[1]} userId={user.id} />
     ) : (
       <Library email={user.email} userId={user.id} />
     );

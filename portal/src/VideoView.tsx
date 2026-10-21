@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 
 import { addComment, deleteComment, deleteVideos, loadComments, loadVideo, signedVideoUrl } from './api';
 import { formatDate, formatPosition, formatTime, sortComments, stepFrame } from './format';
+import { loadNav, neighbours, saveNav } from './nav';
 import type { PublishedVideo, VideoComment } from './types';
 
 const SPEEDS = [1, 0.5, 0.25];
@@ -13,7 +14,11 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
   const [comments, setComments] = useState<VideoComment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [rate, setRate] = useState(1);
+  // Previous/next within the list the library showed (e.g. filtered on one focus area).
+  const [nav] = useState(() => loadNav());
+  const pos = nav ? neighbours(nav.ids, videoId) : null;
+  const [autoplay, setAutoplay] = useState(nav?.autoplay ?? false);
+  const [rate, setRate] = useState(nav?.rate ?? 1);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [text, setText] = useState('');
@@ -44,6 +49,33 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
       cancelled = true;
     };
   }, [videoId]);
+
+  const AUTOSTART = 'gv-clip-autostart';
+  const go = (id: string | null, start: boolean) => {
+    if (!id || !nav) return;
+    saveNav({ ...nav, autoplay, rate });
+    try {
+      if (start) sessionStorage.setItem(AUTOSTART, '1');
+    } catch {
+      // ignore
+    }
+    window.location.hash = `#/video/${id}`;
+  };
+  const toggleAutoplay = (on: boolean) => {
+    setAutoplay(on);
+    if (nav) saveNav({ ...nav, autoplay: on, rate });
+  };
+  /** Start playing when we arrived here via "next" in a series. */
+  const autostart = (v: HTMLVideoElement) => {
+    try {
+      if (sessionStorage.getItem(AUTOSTART) === '1') {
+        sessionStorage.removeItem(AUTOSTART);
+        void v.play().catch(() => undefined);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const el = () => ref.current;
   const fps = video?.frame_rate ?? 30;
@@ -79,6 +111,7 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
     const v = el();
     if (v) v.playbackRate = r;
     setRate(r);
+    if (nav) saveNav({ ...nav, autoplay, rate: r });
   };
 
   const submit = async (e: FormEvent) => {
@@ -145,6 +178,22 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
 
       <main className="content player">
         {error ? <p className="error" role="alert">{error}</p> : null}
+        {pos && pos.total > 1 ? (
+          <div className="clipNav">
+            <button className="btn" disabled={!pos.prev} onClick={() => go(pos.prev, playing)} aria-label="Föregående klipp">
+              ‹ Föregående
+            </button>
+            <span className="clipNavInfo">
+              <strong>
+                {pos.index + 1} / {pos.total}
+              </strong>
+              <span className="muted small">{nav?.label}</span>
+            </span>
+            <button className="btn" disabled={!pos.next} onClick={() => go(pos.next, playing)} aria-label="Nästa klipp">
+              Nästa ›
+            </button>
+          </div>
+        ) : null}
         <div className="videoBox">
           {src ? (
             <video
@@ -159,6 +208,10 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
               onLoadedMetadata={(e) => {
                 setDuration(e.currentTarget.duration);
                 e.currentTarget.playbackRate = rate;
+                autostart(e.currentTarget);
+              }}
+              onEnded={() => {
+                if (autoplay && pos?.next) go(pos.next, true);
               }}
               onClick={togglePlay}
             />
@@ -189,6 +242,12 @@ export function VideoView({ videoId, userId }: { videoId: string; userId: string
           <button className="btn" onClick={() => frame(1)} aria-label="En bild framåt">bild ›</button>
           <button className="btn" onClick={() => seek(time + 5)} aria-label="Framåt 5 sekunder">+5 s</button>
         </div>
+        {pos && pos.total > 1 ? (
+          <label className="check autoplayToggle small">
+            <input type="checkbox" checked={autoplay} onChange={(e) => toggleAutoplay(e.target.checked)} />
+            Spela upp i följd (nästa klipp startar när ett tar slut)
+          </label>
+        ) : null}
         <div className="controls">
           {SPEEDS.map((r) => (
             <button key={r} className={`btn speed ${rate === r ? 'on' : ''}`} onClick={() => setSpeed(r)}>

@@ -4,6 +4,7 @@ import { claimProfiles, deleteVideos, isAdmin, isCoach, listClubs, listMyGoalten
 import { buildVideoTree, filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByMatch, KIND_LABEL } from './format';
 import { signOut } from './auth';
 import type { Club, CoachGoaltender, Team } from './publishClip';
+import { loadNav, saveNav } from './nav';
 import { formatClock } from './tagging';
 import type { GoaltenderProfile, PublishedVideo } from './types';
 
@@ -18,7 +19,23 @@ function formatMatchClock(iso: string): string {
 export function Library({ email, userId }: { email: string; userId: string }) {
   const [videos, setVideos] = useState<PublishedVideo[] | null>(null);
   const [profiles, setProfiles] = useState<GoaltenderProfile[]>([]);
-  const [focus, setFocus] = useState<string | null>(null);
+  // The filter survives a trip to a video and back (per tab).
+  const [focus, setFocusState] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem('gv-focus');
+    } catch {
+      return null;
+    }
+  });
+  const setFocus = (f: string | null) => {
+    setFocusState(f);
+    try {
+      if (f) sessionStorage.setItem('gv-focus', f);
+      else sessionStorage.removeItem('gv-focus');
+    } catch {
+      // ignore
+    }
+  };
   const [error, setError] = useState<string | null>(null);
   const [admin, setAdmin] = useState(false);
   const [coach, setCoach] = useState(false);
@@ -68,6 +85,18 @@ export function Library({ email, userId }: { email: string; userId: string }) {
     [own, coachData],
   );
   const groups = useMemo(() => groupByMatch(received), [received]);
+  // Clips in on-screen order (after the filter) – the video view uses this for previous/next.
+  const orderedIds = useMemo(
+    () => [
+      ...tree.flatMap((c) => c.teams.flatMap((t) => t.goalies.flatMap((g) => g.kinds.flatMap((k) => k.sessions.flatMap((s) => s.videos.map((v) => v.id)))))),
+      ...groups.flatMap((g) => g.videos.map((v) => v.id)),
+    ],
+    [tree, groups],
+  );
+  const rememberList = () => {
+    const prev = loadNav();
+    saveNav({ ids: orderedIds, label: focus ?? 'Alla klipp', autoplay: prev?.autoplay, rate: prev?.rate });
+  };
   const ownCount = (videos ?? []).filter((v) => v.coach_id === userId).length;
 
   const goalieName = (id: string) => {
@@ -99,7 +128,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
 
   const card = (v: PublishedVideo, showGoalie: boolean) => (
     <div key={v.id} className="cardWrap">
-      <a className="videoCard" href={`#/video/${v.id}`}>
+      <a className="videoCard" href={`#/video/${v.id}`} onClick={rememberList}>
         <div className="thumb">
           <span className="play" aria-hidden>▶</span>
           <span className="dur">{formatDuration(v.duration_ms)}</span>
