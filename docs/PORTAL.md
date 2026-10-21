@@ -59,6 +59,21 @@ Logga in med valfri e-post och koden `123456`. `npm run build:demo` bygger demon
 6. **Storage → Settings**: kontrollera *maximal filstorlek*. Se avsnittet Kostnader nedan.
 7. **Project Settings → API**: kopiera *Project URL* och *anon public key*.
 
+## Kontrollera att alla databasfiler är körda
+
+Kör i Supabase → SQL Editor. Varje kolumn ska vara `true`. Står någon som `false`, kör motsvarande fil i `supabase/migrations/` i nummerordning. Filerna 3–5 går att köra flera gånger.
+
+```sql
+select
+  to_regclass('public.goaltenders')       is not null as "0 portal (20261014)",
+  to_regclass('public.plans')             is not null as "1 admin/nivåer (20261016)",
+  to_regclass('public.clubs')             is not null as "2 klubbar/lag (20261018)",
+  to_regclass('public.coach_tag_types')   is not null as "3 egna taggar (20261019)",
+  exists (select 1 from information_schema.columns
+          where table_schema = 'public' and table_name = 'published_videos' and column_name = 'session_kind')
+                                          as "4 match/träning (20261020)";
+```
+
 ## 1a. Inloggning
 
 - **Målvakter** loggar in utan lösenord, med länk eller kod via mejl (fliken *Målvakt*).
