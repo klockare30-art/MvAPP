@@ -191,7 +191,7 @@ Kräver migreringen `supabase/migrations/20261019000000_tag_types.sql`. Kör den
 
 ## 4e. Utseende, logga och miniatyrbilder
 - **Utseende:** färger, typsnitt (Archivo från Google Fonts), avstånd och radier styrs av tokens överst i `portal/src/styles.css`. Ändra där, inte med inline-stilar.
-- **Logga:** `portal/assets/logo.svg` är en platshållare. Ersätt filen med den riktiga loggan (samma namn) och bygg om.
+- **Logga:** `portal/assets/logo.svg` ("Målgården": målgården i isblått över den röda mållinjen). Byt logga genom att ersätta filen (samma namn) och bygga om.
 - **Miniatyrbilder:** tas fram i webbläsaren ur klippet när kortet syns (första skarpa, inte mörka bilden i klippets första halva). Inget nytt sparas. Om lagringsservern inte tillåter att bilden läses visas videons egen bildruta i stället.
 
 ## 5. Matchtaggning (test)
