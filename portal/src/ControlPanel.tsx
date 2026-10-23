@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { loadTagTypes, saveTagTypes } from './api';
 import { setAccountPassword } from './auth';
 import { DEFAULT_TAG_TYPES, MAX_TAG_TYPES, RESERVED_KEYS, tagTypeId, tagTypesProblem, type TagType } from './tagging';
+import { Logo } from './Logo';
 
 const PALETTE = ['#2f7bff', '#f97316', '#a855f7', '#22c55e', '#ef3b3b', '#facc15', '#14b8a6', '#ec4899', '#94a3b8'];
 
@@ -70,7 +71,7 @@ export function ControlPanel() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <strong>GoalieVision</strong>
             <span className="muted small">Kontrollpanel</span>

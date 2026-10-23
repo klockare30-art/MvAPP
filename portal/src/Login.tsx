@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 
 import { sendLoginEmail, signInWithPassword, signUpCoach, verifyCode } from './auth';
 import { IS_DEMO } from './demo';
+import { Logo } from './Logo';
 
 type Tab = 'goalie' | 'coach';
 const TAB_KEY = 'gv-login-tab';
@@ -34,7 +35,7 @@ export function Login() {
     <main className="center">
       <div className="card narrow">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <h1>GoalieVision</h1>
             <p className="muted">Målvaktsportal</p>

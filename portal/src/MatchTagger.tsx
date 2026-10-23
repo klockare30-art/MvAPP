@@ -26,6 +26,7 @@ import {
   type MatchTag,
   type TagType,
 } from './tagging';
+import { Logo } from './Logo';
 
 type PublishState = { kind: 'working' } | { kind: 'error'; message: string };
 type ClipState = { kind: 'working' } | { kind: 'done'; url: string; startSec: number; endSec: number; size: number } | { kind: 'error'; message: string };
@@ -401,7 +402,7 @@ export function MatchTagger() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <strong>GoalieVision</strong>
             <span className="muted small">Matchtaggning (test)</span>

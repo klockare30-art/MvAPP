@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { adminListCoaches, adminSavePlan, adminUpdateCoach, loadPlans } from './api';
 import { bytesToGb, formatBytes, formatDate, gbToBytes, localDateIso } from './format';
 import type { AdminCoach, CoachStatus, Plan } from './types';
+import { Logo } from './Logo';
 
 const STATUS_LABEL: Record<CoachStatus, string> = {
   pending: 'Väntar på godkännande',
@@ -49,7 +50,7 @@ export function Admin() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <strong>GoalieVision</strong>
             <span className="muted small">Administration</span>

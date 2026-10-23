@@ -7,6 +7,8 @@ import type { Club, CoachGoaltender, Team } from './publishClip';
 import { loadNav, saveNav } from './nav';
 import { formatClock } from './tagging';
 import type { GoaltenderProfile, PublishedVideo } from './types';
+import { ClipThumb } from './ClipThumb';
+import { Logo } from './Logo';
 
 type CoachData = { goalies: CoachGoaltender[]; teams: Team[]; clubs: Club[] };
 
@@ -130,7 +132,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
     <div key={v.id} className="cardWrap">
       <a className="videoCard" href={`#/video/${v.id}`} onClick={rememberList}>
         <div className="thumb">
-          <span className="play" aria-hidden>▶</span>
+          <ClipThumb video={v} />
           <span className="dur">{formatDuration(v.duration_ms)}</span>
         </div>
         <div className="meta">
@@ -156,7 +158,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <strong>GoalieVision</strong>
             <span className="muted small">{me ? `${me.first_name} ${me.last_name}`.trim() : email}</span>

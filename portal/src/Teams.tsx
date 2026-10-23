@@ -17,6 +17,7 @@ import {
 } from './api';
 import { GoalieForm } from './GoalieForm';
 import { accountBlocker, goalieLabel, type Club, type CoachAccount, type CoachGoaltender, type Team } from './publishClip';
+import { Logo } from './Logo';
 
 type Data = { account: CoachAccount | null; clubs: Club[]; teams: Team[]; goalies: CoachGoaltender[] };
 
@@ -70,7 +71,7 @@ export function Teams() {
     <div className="page">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden>●</span>
+          <Logo />
           <div>
             <strong>GoalieVision</strong>
             <span className="muted small">Mina lag</span>
@@ -104,7 +105,7 @@ export function Teams() {
         {data && !data.account ? (
           <div className="card stack">
             <p className="muted">Du behöver en tränarprofil. Administratören godkänner den.</p>
-            <button className="btn primary" disabled={busy} onClick={() => void run(() => becomeCoach(''))} style={{ alignSelf: 'flex-start' }}>
+            <button className="btn primary alignStart" disabled={busy} onClick={() => void run(() => becomeCoach(''))}>
               Skapa tränarprofil
             </button>
           </div>
