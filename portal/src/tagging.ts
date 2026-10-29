@@ -83,6 +83,8 @@ export interface MatchTag {
   goalieId?: string;
   /** Set once the clip is saved: who it went to (shown after a reload, prevents double uploads). */
   publishedTo?: string;
+  /** The coach's comment, saved with the clip (the goaltender sees it as "Tränarens anteckning"). */
+  note?: string;
 }
 
 export const DEFAULT_BEFORE_SEC = 6;
@@ -113,6 +115,33 @@ export function clipRange(tag: MatchTag, durationSec: number): { startSec: numbe
 
 export function sortTags(tags: MatchTag[]): MatchTag[] {
   return [...tags].sort((a, b) => a.atSec - b.atSec);
+}
+
+/**
+ * The list order is the coach's presentation order. A new tag goes in at its
+ * place in time: after the last tag that comes before it in the match.
+ */
+export function insertByTime(tags: MatchTag[], tag: MatchTag): MatchTag[] {
+  let at = 0;
+  tags.forEach((t, i) => {
+    if (t.atSec <= tag.atSec) at = i + 1;
+  });
+  return [...tags.slice(0, at), tag, ...tags.slice(at)];
+}
+
+/** Moves a tag one step up (-1) or down (+1) in the presentation order. */
+export function moveTag(tags: MatchTag[], id: string, delta: -1 | 1): MatchTag[] {
+  return moveInList(tags, id, delta);
+}
+
+/** Moves the item with the given id one step; unchanged at the ends or when missing. */
+export function moveInList<T extends { id: string }>(items: T[], id: string, delta: -1 | 1): T[] {
+  const i = items.findIndex((x) => x.id === id);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= items.length) return items;
+  const next = [...items];
+  [next[i], next[j]] = [next[j]!, next[i]!];
+  return next;
 }
 
 /** "1:24:13" or "4:05" – match clock for lists. */
@@ -171,7 +200,7 @@ export function goaliesInTeam<G extends { team_id: string | null }>(goalies: G[]
     : goalies.filter((g) => g.team_id === teamId);
 }
 
-/** Clips to act on: the marked ones, or every tag when nothing is marked. Always in match order. */
+/** Clips to act on: the marked ones, or every tag when nothing is marked. In the list's (presentation) order. */
 export function chosenTags(tags: MatchTag[], marked: ReadonlySet<string>): MatchTag[] {
-  return sortTags(marked.size > 0 ? tags.filter((t) => marked.has(t.id)) : tags);
+  return marked.size > 0 ? tags.filter((t) => marked.has(t.id)) : tags;
 }

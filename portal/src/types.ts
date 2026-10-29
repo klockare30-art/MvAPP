@@ -14,6 +14,8 @@ export interface PublishedVideo {
   published_at: string;
   /** 'match' | 'traning'; null for clips published before the type existed. */
   session_kind?: SessionKind | null;
+  /** The coach's order within the match/training (0, 1, 2 …); null = time order. */
+  sort_order?: number | null;
 }
 
 export type SessionKind = 'match' | 'traning';

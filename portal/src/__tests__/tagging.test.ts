@@ -7,6 +7,8 @@ import {
   countByType,
   formatClock,
   goaliesInTeam,
+  insertByTime,
+  moveTag,
   NO_TEAM,
   newTag,
   parseStoredTags,
@@ -64,12 +66,38 @@ describe('choosing goaltenders by team', () => {
 });
 
 describe('marking clips', () => {
-  test('acts on marked clips in match order, or on all when none are marked', () => {
+  test('acts on marked clips, or on all when none are marked, in the coach\'s list order', () => {
     const a = newTag('skott', 50);
     const b = newTag('retur', 10);
     const c = newTag('skott', 30);
-    expect(chosenTags([a, b, c], new Set([a.id, c.id])).map((t) => t.atSec)).toEqual([30, 50]);
-    expect(chosenTags([a, b, c], new Set()).map((t) => t.atSec)).toEqual([10, 30, 50]);
+    expect(chosenTags([a, b, c], new Set([a.id, c.id])).map((t) => t.atSec)).toEqual([50, 30]);
+    expect(chosenTags([a, b, c], new Set()).map((t) => t.atSec)).toEqual([50, 10, 30]);
+  });
+});
+
+describe('presentation order', () => {
+  const a = newTag('skott', 10);
+  const b = newTag('retur', 20);
+  const c = newTag('skott', 30);
+
+  test('a new tag goes in at its place in time', () => {
+    expect(insertByTime([], b).map((t) => t.atSec)).toEqual([20]);
+    expect(insertByTime([a, c], b).map((t) => t.atSec)).toEqual([10, 20, 30]);
+    expect(insertByTime([c, a], newTag('mal', 40)).map((t) => t.atSec)).toEqual([c.atSec, a.atSec, 40]);
+    expect(insertByTime([b, c], newTag('mal', 5)).map((t) => t.atSec)).toEqual([5, 20, 30]);
+  });
+
+  test('moves a tag one step and stops at the ends', () => {
+    expect(moveTag([a, b, c], c.id, -1).map((t) => t.id)).toEqual([a.id, c.id, b.id]);
+    expect(moveTag([a, b, c], a.id, 1).map((t) => t.id)).toEqual([b.id, a.id, c.id]);
+    expect(moveTag([a, b, c], a.id, -1)).toEqual([a, b, c]);
+    expect(moveTag([a, b, c], c.id, 1)).toEqual([a, b, c]);
+    expect(moveTag([a, b, c], 'missing', 1)).toEqual([a, b, c]);
+  });
+
+  test('the comment survives a reload', () => {
+    const tags = [{ ...newTag('skott', 12.5), note: 'Titta på klubban' }];
+    expect(parseStoredTags(JSON.stringify(tags))).toEqual(tags);
   });
 });
 

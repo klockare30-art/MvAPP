@@ -436,4 +436,29 @@ select t.check(t.affected($$update public.published_videos set session_kind = 'm
   'another coach cannot change the type');
 reset role;
 
+-- ---------------------------------------------------------------------------
+-- Clip order and note within a match/training
+-- ---------------------------------------------------------------------------
+select t.login('aaaaaaaa-0000-0000-0000-000000000001');
+insert into storage.objects (bucket_id, name, metadata) values
+  ('videos', 'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000d01a/m2.mp4', '{"size": 1000}');
+insert into public.published_videos (id, coach_id, goaltender_id, storage_path, recorded_at, duration_ms, session_kind, sort_order, coach_note)
+  values ('22222222-0000-0000-0000-0000000000a2', auth.uid(), '11111111-0000-0000-0000-00000000d01a',
+          'aaaaaaaa-0000-0000-0000-000000000001/11111111-0000-0000-0000-00000000d01a/m2.mp4', now(), 9000, 'match', 0, 'Bra start');
+select t.check((select sort_order = 0 and coach_note = 'Bra start' from public.published_videos
+  where id = '22222222-0000-0000-0000-0000000000a2'), 'coach publishes a clip with order and note');
+select t.check(t.affected($$update public.published_videos set sort_order = 1
+  where id = '22222222-0000-0000-0000-0000000000a2'$$) = 1, 'coach can reorder own clips');
+select t.denied($$update public.published_videos set sort_order = -1 where id = '22222222-0000-0000-0000-0000000000a2'$$,
+  'order cannot be negative');
+reset role;
+select t.login('bbbbbbbb-0000-0000-0000-000000000002');
+select t.check(t.affected($$update public.published_videos set sort_order = 5$$) = 0,
+  'another coach cannot reorder the clips');
+reset role;
+select t.login('eeeeeeee-0000-0000-0000-000000000003');
+select t.check(t.affected($$update public.published_videos set sort_order = 5$$) = 0,
+  'goaltender cannot reorder clips');
+reset role;
+
 \echo 'ALL RLS TESTS PASSED'

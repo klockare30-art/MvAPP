@@ -185,6 +185,13 @@ export const demoApi = {
     for (let i = videos.length - 1; i >= 0; i--) if (ids.has(videos[i]!.id)) videos.splice(i, 1);
     for (const v of list) demoUploads.delete(v.storage_path);
   },
+  async reorderVideos(ids: string[]) {
+    await wait();
+    ids.forEach((id, i) => {
+      const v = videos.find((x) => x.id === id);
+      if (v) v.sort_order = i;
+    });
+  },
   async loadTagTypes() {
     await wait();
     return demoTagTypes;
@@ -271,6 +278,7 @@ export const demoApi = {
         recorded_at: row.recorded_at, duration_ms: row.duration_ms, frame_rate: row.frame_rate, coach_note: row.coach_note,
         published_at: new Date().toISOString(),
         session_kind: row.session_kind,
+        sort_order: row.sort_order,
       });
     },
     async removeObject(path: string) {

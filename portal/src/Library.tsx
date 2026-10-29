@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { claimProfiles, deleteVideos, isAdmin, isCoach, listClubs, listMyGoaltenders, listTeams, loadProfiles, loadVideos } from './api';
+import { claimProfiles, deleteVideos, isAdmin, isCoach, listClubs, listMyGoaltenders, listTeams, loadProfiles, loadVideos, reorderVideos } from './api';
 import { buildVideoTree, filterByFocus, focusAreaCounts, formatDuration, formatTime, groupByMatch, KIND_LABEL } from './format';
 import { signOut } from './auth';
 import type { Club, CoachGoaltender, Team } from './publishClip';
 import { loadNav, saveNav } from './nav';
-import { formatClock } from './tagging';
+import { formatClock, moveInList } from './tagging';
 import type { GoaltenderProfile, PublishedVideo } from './types';
 import { ClipThumb } from './ClipThumb';
 import { Logo } from './Logo';
@@ -126,9 +126,23 @@ export function Library({ email, userId }: { email: string; userId: string }) {
     }
   };
 
+  /** Coach only: moves a clip one step within its match/training. Both the coach and the goaltender see the new order. */
+  const move = async (siblings: PublishedVideo[], id: string, delta: -1 | 1) => {
+    const ids = moveInList(siblings, id, delta).map((v) => v.id);
+    const order = new Map(ids.map((x, i) => [x, i]));
+    setVideos((prev) => (prev ? prev.map((v) => (order.has(v.id) ? { ...v, sort_order: order.get(v.id) } : v)) : prev));
+    setError(null);
+    try {
+      await reorderVideos(ids);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      void loadVideos().then(setVideos).catch(() => undefined);
+    }
+  };
+
   const me = profiles.find((p) => p.user_id === userId);
 
-  const card = (v: PublishedVideo, showGoalie: boolean) => (
+  const card = (v: PublishedVideo, showGoalie: boolean, siblings?: PublishedVideo[]) => (
     <div key={v.id} className="cardWrap">
       <a className="videoCard" href={`#/video/${v.id}`} onClick={rememberList}>
         <div className="thumb">
@@ -147,9 +161,26 @@ export function Library({ email, userId }: { email: string; userId: string }) {
         </div>
       </a>
       {manage && v.coach_id === userId ? (
-        <button className="cardDelete" disabled={deleting} onClick={() => void remove([v], 'klippet')} aria-label="Ta bort klippet">
-          Ta bort
-        </button>
+        <div className="cardTools">
+          {siblings && siblings.length > 1 ? (
+            <span className="orderButtons">
+              <button className="orderBtn" disabled={siblings[0]?.id === v.id} onClick={() => void move(siblings, v.id, -1)} aria-label="Flytta klippet tidigare">
+                ↑
+              </button>
+              <button
+                className="orderBtn"
+                disabled={siblings[siblings.length - 1]?.id === v.id}
+                onClick={() => void move(siblings, v.id, 1)}
+                aria-label="Flytta klippet senare"
+              >
+                ↓
+              </button>
+            </span>
+          ) : null}
+          <button className="cardDelete" disabled={deleting} onClick={() => void remove([v], 'klippet')} aria-label="Ta bort klippet">
+            Ta bort
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -223,7 +254,11 @@ export function Library({ email, userId }: { email: string; userId: string }) {
             <button className={`btn ${manage ? 'primary' : ''}`} onClick={() => setManage((m) => !m)}>
               {manage ? 'Klar' : 'Hantera klipp'}
             </button>
-            {manage ? <span className="small muted">Ta bort enskilda klipp eller en hel match/träning. Bara klipp du själv har publicerat.</span> : null}
+            {manage ? (
+              <span className="small muted">
+                Ändra ordningen med ↑ ↓ (målvakten ser samma ordning), ta bort enskilda klipp eller en hel match/träning. Bara klipp du själv har publicerat.
+              </span>
+            ) : null}
           </div>
         ) : null}
 
@@ -264,7 +299,7 @@ export function Library({ email, userId }: { email: string; userId: string }) {
                                 </button>
                               ) : null}
                             </summary>
-                            <div className="grid">{s.videos.map((v) => card(v, false))}</div>
+                            <div className="grid">{s.videos.map((v) => card(v, false, s.videos))}</div>
                           </details>
                         ))}
                       </div>

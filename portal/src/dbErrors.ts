@@ -5,6 +5,8 @@
 const MIGRATIONS: { match: RegExp; file: string; what: string }[] = [
   { match: /session_kind/, file: '20261020000000_session_kind.sql', what: 'match/träning' },
   { match: /coach_tag_types|save_my_tag_types/, file: '20261019000000_tag_types.sql', what: 'egna taggar' },
+  // After the tag types: coach_tag_types has its own sort_order column.
+  { match: /\bsort_order\b/, file: '20261029000000_clip_order.sql', what: 'klippens ordning' },
   { match: /\bclubs\b|\bteams\b|team_id|caller_owns_(club|team)/, file: '20261018000000_clubs_teams.sql', what: 'klubbar och lag' },
   { match: /\bplans\b|my_coach_account|admin_|is_admin|caller_|paid_until|plan_id/, file: '20261016000000_coach_access.sql', what: 'admin och nivåer' },
 ];

@@ -59,6 +59,7 @@ export interface ClipVideoRow {
   height: number | null;
   coach_note: string | null;
   session_kind: 'match' | 'traning';
+  sort_order: number | null;
 }
 
 export interface ClipPortalApi {
@@ -103,6 +104,10 @@ export interface ClipToPublish {
   durationMs: number;
   width: number | null;
   height: number | null;
+  /** The coach's comment for the goaltender (empty = none). */
+  coachNote?: string | null;
+  /** Position in the coach's presentation order within the match. */
+  sortOrder?: number | null;
 }
 
 /** The match clock as an ISO time: midnight of the match day plus the tag's position (keeps clips in match order). */
@@ -136,7 +141,8 @@ export async function publishClip(api: ClipPortalApi, clip: ClipToPublish): Prom
       frame_rate: null,
       width: clip.width,
       height: clip.height,
-      coach_note: null,
+      coach_note: clip.coachNote?.trim() || null,
+      sort_order: clip.sortOrder ?? null,
     });
   } catch (e) {
     await api.removeObject(path).catch(() => undefined);

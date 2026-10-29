@@ -1427,3 +1427,45 @@ kbd {
     flex: 1 1 200px;
   }
 }
+
+/* Ordning på klipp (taggningen och biblioteket) och tränarens kommentar per tagg */
+.orderButtons {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.orderBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.orderBtn:hover:not(:disabled) {
+  border-color: var(--text-2);
+}
+.orderBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.cardTools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.tagNoteInput {
+  width: 100%;
+  min-height: var(--tap-small);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--step--1);
+}
+.tagNote {
+  margin: var(--space-2) 0 0;
+  color: var(--warn);
+}

@@ -79,7 +79,8 @@ describe('grouping per match', () => {
     const c = { ...v('c', 'Skott', '2026-10-18T10:00:00'), session_title: 'Morgonpass' };
     const d = { ...v('d', 'Skott', '2026-10-11T19:00:00'), session_title: null };
     const groups = groupByMatch([a, c, d, b]);
-    expect(groups.map((g) => g.videos.map((x) => x.id))).toEqual([['b', 'a'], ['c'], ['d']]);
+    // Newest match first; inside a match the clips play in match order, like in the coach's view.
+    expect(groups.map((g) => g.videos.map((x) => x.id))).toEqual([['a', 'b'], ['c'], ['d']]);
     expect(groups[0]?.title).toContain('Hemma mot AIK');
     expect(groups[2]?.title).not.toContain('·');
   });
@@ -122,6 +123,16 @@ describe('coach library tree', () => {
     expect(dif.teams[1]!.goalies[0]!.kinds[0]).toMatchObject({ kind: 'none' });
     expect(dif.teams[1]!.goalies[0]!.kinds[0]!.sessions[0]!.title).toBe('Utan rubrik');
     expect(tree[1]!.teams[0]!.goalies.map((g) => g.label)).toEqual(['Hugo L']);
+  });
+
+  test("the coach's order wins inside a match, for the coach and the goaltender alike", () => {
+    const a = { ...clip('a', 'erik', '2026-10-18T19:10:00', 'Hemma mot AIK', 'match'), sort_order: 2 };
+    const b = { ...clip('b', 'erik', '2026-10-18T19:40:00', 'Hemma mot AIK', 'match'), sort_order: 0 };
+    const c = { ...clip('c', 'erik', '2026-10-18T19:50:00', 'Hemma mot AIK', 'match'), sort_order: 1 };
+    const old = clip('d', 'erik', '2026-10-18T19:00:00', 'Hemma mot AIK', 'match'); // no order: after, in time order
+    const tree = buildVideoTree([a, b, c, old], goalies, teams, clubs);
+    expect(tree[0]!.teams[0]!.goalies[0]!.kinds[0]!.sessions[0]!.videos.map((x) => x.id)).toEqual(['b', 'c', 'a', 'd']);
+    expect(groupByMatch([a, b, c, old])[0]!.videos.map((x) => x.id)).toEqual(['b', 'c', 'a', 'd']);
   });
 
   test('empty teams and clubs are left out', () => {

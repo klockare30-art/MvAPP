@@ -313,6 +313,14 @@ export async function deleteVideos(videos: { id: string; storage_path: string }[
   if (rmErr) throw new Error(`Klippen är borttagna för målvakten, men filerna kunde inte raderas: ${rmErr.message}`);
 }
 
+/** Coach: saves the order of clips within a match/training (0, 1, 2 … in the given order). */
+export async function reorderVideos(ids: string[]): Promise<void> {
+  const results = await Promise.all(
+    ids.map((id, i) => client().from('published_videos').update({ sort_order: i }).eq('id', id)),
+  );
+  for (const r of results) fail(r.error);
+}
+
 /** The coach's own tag list; null = not set yet (the portal then uses the default list). */
 export async function loadTagTypes(): Promise<TagType[] | null> {
   const { data, error } = await client()

@@ -61,7 +61,7 @@ Logga in med valfri e-post och koden `123456`. `npm run build:demo` bygger demon
 
 ## Kontrollera att alla databasfiler är körda
 
-Kör i Supabase → SQL Editor. Varje kolumn ska vara `true`. Står någon som `false`, kör motsvarande fil i `supabase/migrations/` i nummerordning. Filerna 3–5 går att köra flera gånger.
+Kör i Supabase → SQL Editor. Varje kolumn ska vara `true`. Står någon som `false`, kör motsvarande fil i `supabase/migrations/` i nummerordning. Filerna 3–6 går att köra flera gånger.
 
 ```sql
 select
@@ -71,7 +71,10 @@ select
   to_regclass('public.coach_tag_types')   is not null as "3 egna taggar (20261019)",
   exists (select 1 from information_schema.columns
           where table_schema = 'public' and table_name = 'published_videos' and column_name = 'session_kind')
-                                          as "4 match/träning (20261020)";
+                                          as "4 match/träning (20261020)",
+  exists (select 1 from information_schema.columns
+          where table_schema = 'public' and table_name = 'published_videos' and column_name = 'sort_order')
+                                          as "5 klippens ordning (20261029)";
 ```
 
 ## 1a. Inloggning
@@ -167,7 +170,12 @@ Kräver migreringen `supabase/migrations/20261020000000_session_kind.sql`, som g
   - Matchklipp visar var i matchen klippet ligger.
 - **Typ:** matchtaggningen frågar efter Match eller Träning, med Match som standard. iPad-appen sparar alltid som Träning.
   - Klipp sparade innan typen fanns visas under "Utan typ (äldre klipp)".
-- Målvakter ser sina egna videor per dag och pass, som tidigare.
+- Målvakter ser sina egna videor per dag och pass.
+- **Ordning** (kräver `supabase/migrations/20261029000000_clip_order.sql`, går att köra flera gånger):
+  - Inom en match eller träning visas klippen i tränarens ordning, för både tränaren och målvakten. Föregående/Nästa och "Spela upp i följd" följer samma ordning.
+  - Ordningen sätts i matchtaggningen (↑ ↓ i tagglistan) och kan ändras i biblioteket: **Hantera klipp** → ↑ ↓ på klippet.
+  - Klipp utan egen ordning (äldre klipp och klipp från iPad-appen) visas efter, i tidsordning.
+  - Bara tränaren som publicerat klippen kan ändra ordningen. Det är testat i databasen.
 - **Hantera klipp** (syns bara för tränare): välj **Ta bort** på ett klipp, eller **Ta bort matchen** för alla klipp i gruppen. Det går också från videovyn med **Ta bort klipp**.
 - Det som tas bort är publiceringen, filen och kommentarerna. Målvakten ser klippet inte längre.
 - En tränare kan bara ta bort klipp som hen själv har publicerat. Det är testat i databasen.
@@ -204,6 +212,8 @@ Portalen → **Tagga match** visas för tränare och admin. Matchfilen öppnas f
 - **Spara klipp:** välj **lag**, **målvakt**, matchnamn och datum. Målvaktslistan visar bara det valda lagets målvakter.
   - Varje tagg kan få en egen målvakt, t.ex. vid målvaktsbyte. Annars används matchens målvakt.
   - **Spara klipp** eller **Spara alla/markerade** klipper ut och laddar upp. Klippen hamnar hos målvakten med taggen som fokusområde och lagets namn.
+- **Kommentar per klipp:** skriv i fältet "Kommentar till målvakten" på taggen innan du sparar. Målvakten ser den som *Tränarens anteckning* under videon. Kommentaren sparas med taggarna i webbläsaren tills klippet sparas.
+- **Ordning:** listans ordning är ordningen klippen visas i, både vid **▶ Visa** och för målvakten i portalen. Flytta med ↑ ↓. Nya taggar hamnar på sin plats i tid. **Sortera efter tid** återställer tidsordningen.
 - **Markera och visa:**
   - markera klipp med rutorna, eller med **Alla** och per typ, t.ex. **Skott (5)**
   - **▶ Visa markerade** spelar klippen i följd i normal fart, med Föregående och Nästa. Det passar för genomgångar.

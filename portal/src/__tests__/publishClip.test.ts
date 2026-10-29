@@ -31,6 +31,15 @@ describe('publishing a match clip', () => {
     expect(calls).toEqual(['upload:coach-1/g1/v1.mp4', 'row:Skott:Hemma mot AIK']);
   });
 
+  test("saves the coach's comment and the clip's place in the order", async () => {
+    let row: Parameters<ClipPortalApi['insertVideo']>[0] | null = null;
+    const { api } = fakeApi({ insertVideo: async (r) => void (row = r) });
+    await publishClip(api, { ...clip, coachNote: '  Titta på klubban  ', sortOrder: 3 });
+    expect(row).toMatchObject({ coach_note: 'Titta på klubban', sort_order: 3 });
+    await publishClip(api, { ...clip, coachNote: '   ' });
+    expect(row).toMatchObject({ coach_note: null, sort_order: null });
+  });
+
   test('removes the uploaded file if registering fails', async () => {
     const { api, calls } = fakeApi({ insertVideo: async () => { throw new Error('rls'); } });
     await expect(publishClip(api, clip)).rejects.toThrow('rls');

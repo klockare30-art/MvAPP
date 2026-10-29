@@ -55,6 +55,13 @@ export function groupByDay(videos: PublishedVideo[]): { day: string; videos: Pub
   return groups;
 }
 
+/** Within one match/training: the coach's order first, then time order (older clips, iPad app). */
+export function inSessionOrder(a: PublishedVideo, b: PublishedVideo): number {
+  const oa = a.sort_order ?? Number.POSITIVE_INFINITY;
+  const ob = b.sort_order ?? Number.POSITIVE_INFINITY;
+  return oa !== ob ? (oa < ob ? -1 : 1) : a.recorded_at.localeCompare(b.recorded_at);
+}
+
 /**
  * Videos grouped per day and match/session (local time), newest first:
  * "fre 18 okt. 2026 · Hemma mot AIK". Clips from the same match stay together.
@@ -70,7 +77,8 @@ export function groupByMatch(videos: PublishedVideo[]): { key: string; title: st
     if (g) g.videos.push(v);
     else groups.set(key, { key, title: session ? `${day} · ${session}` : day, videos: [v] });
   }
-  return [...groups.values()];
+  // Inside a match the goaltender sees the clips in the same order as the coach.
+  return [...groups.values()].map((g) => ({ ...g, videos: [...g.videos].sort(inSessionOrder) }));
 }
 
 /** Timestamped comments first (in video order), then general comments by time. */
@@ -162,8 +170,10 @@ function sessionsOf(videos: PublishedVideo[]): TreeSession[] {
     if (s) s.videos.push(v);
     else map.set(key, { key, day, dayLabel: formatDate(v.recorded_at), title, videos: [v] });
   }
-  // Newest session first; clips inside in match/recording order.
-  return [...map.values()].sort((a, b) => b.day.localeCompare(a.day) || a.title.localeCompare(b.title, 'sv'));
+  // Newest session first; clips inside in the coach's order (else match/recording order).
+  return [...map.values()]
+    .map((s) => ({ ...s, videos: s.videos.sort(inSessionOrder) }))
+    .sort((a, b) => b.day.localeCompare(a.day) || a.title.localeCompare(b.title, 'sv'));
 }
 
 /**

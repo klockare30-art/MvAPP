@@ -14,6 +14,8 @@ import {
   chosenTags,
   formatClock,
   goaliesInTeam,
+  insertByTime,
+  moveTag,
   newTag,
   NO_TEAM,
   parseStoredTags,
@@ -136,7 +138,8 @@ export function MatchTagger() {
   const updateTags = useCallback(
     (fn: (prev: MatchTag[]) => MatchTag[]) => {
       setTags((prev) => {
-        const next = sortTags(fn(prev));
+        // The list order is the coach's presentation order (new tags go in at their time).
+        const next = fn(prev);
         if (storageKey) writeStored(storageKey, next);
         return next;
       });
@@ -149,7 +152,7 @@ export function MatchTagger() {
       const v = video.current;
       if (!v) return;
       const tag = newTag(type.id, v.currentTime, type.beforeSec, type.afterSec);
-      updateTags((prev) => [...prev, tag]);
+      updateTags((prev) => insertByTime(prev, tag));
       setLastTag(tag.id);
     },
     [updateTags],
@@ -214,7 +217,8 @@ export function MatchTagger() {
   // Keyboard: hold F = fast-forward, Space = play/pause, ←/→ = 5 s, tag keys add a tag.
   useEffect(() => {
     if (!url) return;
-    const isTyping = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement;
+    const isTyping = (e: KeyboardEvent) =>
+      e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
       // Enter/Esc leaves a text field so the tag keys work again.
       if (isTyping(e) && (e.key === 'Enter' || e.key === 'Escape')) {
@@ -366,6 +370,8 @@ export function MatchTagger() {
         durationMs: Math.round((clip.endSec - clip.startSec) * 1000),
         width: info?.width ?? null,
         height: info?.height ?? null,
+        coachNote: tag.note ?? null,
+        sortOrder: Math.max(0, tags.findIndex((t) => t.id === tag.id)),
       });
       updateTags((prev) => prev.map((t) => (t.id === tag.id ? { ...t, publishedTo: goalieLabel(goalie) } : t)));
       setPublishing((p) => {
@@ -389,6 +395,7 @@ export function MatchTagger() {
     if (!Number.isFinite(value) || value < 0 || value > 120) return;
     updateTags((prev) => prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
   };
+  const setNote = (id: string, note: string) => updateTags((prev) => prev.map((t) => (t.id === id ? { ...t, note } : t)));
 
   const playable = useMemo(() => {
     if (!info?.codecString) return null;
@@ -524,6 +531,7 @@ export function MatchTagger() {
                 <p className="small muted center-text">
                   Håll F framåt / B bakåt. Släpper du framåt går videon tillbaka till normal fart, {REWIND_ON_RELEASE_SEC} s bakåt.
                   Mellanslag = spela/pausa, ←/→ = 5 s. I ett textfält: Enter för att tagga igen.
+                  Ordningen i listan (↑ ↓) är ordningen klippen visas i, både här och för målvakten.
                 </p>
 
                 <div className="tagButtons">
@@ -604,6 +612,9 @@ export function MatchTagger() {
                         Avmarkera ({marked.size})
                       </button>
                     ) : null}
+                    <button className="link small" onClick={() => updateTags((prev) => sortTags(prev))}>
+                      Sortera efter tid
+                    </button>
                     <button className="link small" disabled={chosen.length === 0 || !info} onClick={() => void saveAll()}>
                       Ladda ner {marked.size > 0 ? 'markerade' : 'alla'}
                     </button>
@@ -615,7 +626,7 @@ export function MatchTagger() {
                   <p className="small muted">Tryck på en tagg (eller tangenten) när något händer. Taggen sparas vid aktuell tid.</p>
                 )}
                 <ul>
-                  {tags.map((t) => {
+                  {tags.map((t, i) => {
                     const type = tagTypeById(tagTypes, t.type);
                     const r = clipRange(t, duration);
                     const st = clips[t.id];
@@ -638,6 +649,24 @@ export function MatchTagger() {
                             ▶ {formatClock(t.atSec)}
                           </button>
                           <strong>{type.label}</strong>
+                          <span className="orderButtons">
+                            <button
+                              className="orderBtn"
+                              disabled={i === 0}
+                              onClick={() => updateTags((prev) => moveTag(prev, t.id, -1))}
+                              aria-label={`Flytta upp ${type.label} ${formatClock(t.atSec)}`}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              className="orderBtn"
+                              disabled={i === tags.length - 1}
+                              onClick={() => updateTags((prev) => moveTag(prev, t.id, 1))}
+                              aria-label={`Flytta ner ${type.label} ${formatClock(t.atSec)}`}
+                            >
+                              ↓
+                            </button>
+                          </span>
                           <button className="link small" onClick={() => updateTags((prev) => prev.filter((x) => x.id !== t.id))}>
                             Ta bort
                           </button>
@@ -651,6 +680,18 @@ export function MatchTagger() {
                             {st?.kind === 'working' ? 'Klipper…' : 'Ladda ner'}
                           </button>
                         </div>
+                        {t.publishedTo ? (
+                          t.note ? <p className="tagNote small">{t.note}</p> : null
+                        ) : (
+                          <input
+                            className="tagNoteInput"
+                            value={t.note ?? ''}
+                            maxLength={2000}
+                            onChange={(e) => setNote(t.id, e.target.value)}
+                            placeholder="Kommentar till målvakten (valfri)"
+                            aria-label={`Kommentar till ${type.label} ${formatClock(t.atSec)}`}
+                          />
+                        )}
                         <div className="tagRowSave small">
                           {t.publishedTo ? (
                             <span className="published">✓ Sparat hos {t.publishedTo}</span>
